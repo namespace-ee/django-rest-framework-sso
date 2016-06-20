@@ -19,6 +19,7 @@ DEFAULTS = {
     'DECODE_ALGORITHMS': None,
     'VERIFY_SIGNATURE': True,
     'VERIFY_EXPIRATION': True,
+    'VERIFY_SESSION_TOKEN': True,
     'EXPIRATION_LEEWAY': 0,
     'SESSION_EXPIRATION': None,
     'AUTHORIZATION_EXPIRATION': datetime.timedelta(seconds=300),

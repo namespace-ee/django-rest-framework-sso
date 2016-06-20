@@ -63,7 +63,7 @@ class JWTAuthentication(BaseAuthentication):
 
         user_model = get_user_model()
 
-        if not SessionToken._meta.abstract:
+        if api_settings.VERIFY_SESSION_TOKEN:
             try:
                 SessionToken.objects.active().get(pk=payload.get('sid'), user_id=payload.get('uid'))
             except SessionToken.DoesNotExist:
