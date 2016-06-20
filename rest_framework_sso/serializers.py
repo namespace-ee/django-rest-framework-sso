@@ -35,3 +35,7 @@ class SessionTokenSerializer(serializers.Serializer):
 
         attrs['user'] = user
         return attrs
+
+
+class AuthorizationTokenSerializer(serializers.Serializer):
+    pass

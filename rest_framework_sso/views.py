@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from rest_framework_sso.models import SessionToken
-from rest_framework_sso.serializers import SessionTokenSerializer
+from rest_framework_sso.serializers import SessionTokenSerializer, AuthorizationTokenSerializer
 from rest_framework_sso.settings import api_settings
 
 create_session_payload = api_settings.CREATE_SESSION_PAYLOAD
@@ -80,6 +80,7 @@ class ObtainAuthorizationTokenView(BaseAPIView):
     Returns a JSON Web Token that can be used for authenticated requests.
     """
     permission_classes = (IsAuthenticated,)
+    serializer_class = AuthorizationTokenSerializer
 
     def post(self, request, *args, **kwargs):
         if hasattr(request.auth, 'get') and request.auth.get('sid'):
