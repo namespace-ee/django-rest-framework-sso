@@ -3,6 +3,7 @@ from __future__ import absolute_import, unicode_literals
 
 import jwt
 from django.contrib.auth import get_user_model
+from django.utils.encoding import smart_text
 from django.utils.translation import ugettext as _
 from rest_framework import exceptions
 from rest_framework.authentication import (
@@ -26,8 +27,9 @@ class JWTAuthentication(BaseAuthentication):
 
     def authenticate(self, request):
         auth = get_authorization_header(request).split()
+        authenticate_header = self.authenticate_header(request=request)
 
-        if not auth or auth[0].lower() != api_settings.AUTHENTICATE_HEADER.lower().encode('utf-8'):
+        if not auth or smart_text(auth[0].lower()) != authenticate_header.lower():
             return None
 
         if len(auth) == 1:
