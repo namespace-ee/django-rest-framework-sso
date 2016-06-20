@@ -41,8 +41,10 @@ def encode_jwt_token(payload):
             raise RuntimeError('IDENTITY must be specified in settings')
 
     if not payload.get('aud'):
-        if api_settings.SESSION_AUDIENCE is not None:
+        if payload.get('type') == 'session' and api_settings.SESSION_AUDIENCE is not None:
             payload['aud'] = api_settings.SESSION_AUDIENCE
+        elif payload.get('type') == 'auth' and api_settings.AUTHORIZATION_AUDIENCE is not None:
+            payload['aud'] = api_settings.AUTHORIZATION_AUDIENCE
         elif api_settings.IDENTITY is not None:
             payload['aud'] = [api_settings.IDENTITY]
         else:
