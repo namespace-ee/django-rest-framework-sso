@@ -24,3 +24,23 @@ Quick start
         url(r'^session/', obtain_session_token),
         url(r'^authorize/', obtain_authorization_token),
     ]
+
+
+Authentication class
+--------------------
+In order to get-or-create User accounts automatically within your microservice apps,
+you can use the following DRF Authentication class template:
+
+    class Authentication(rest_framework_sso.authentication.JWTAuthentication):
+        def authenticate_credentials(self, payload):
+            user_model = get_user_model()
+
+            user, created = user_model.objects.get_or_create(
+                service=payload.get('iss'),
+                external_id=payload.get('uid'),
+            )
+
+            if not user.is_active:
+                raise exceptions.AuthenticationFailed(_('User inactive or deleted.'))
+
+            return user, payload
