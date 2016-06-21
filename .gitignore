@@ -8,3 +8,7 @@ __pycache__/
 
 # C extensions
 *.so
+
+# Distribution
+dist/
+*.egg-info

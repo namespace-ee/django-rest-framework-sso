@@ -1,0 +1,5 @@
+include LICENSE
+include README.rst
+recursive-include rest_framework_sso/migrations *
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
