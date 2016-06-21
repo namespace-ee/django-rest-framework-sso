@@ -65,14 +65,18 @@ class JWTAuthentication(BaseAuthentication):
 
         if api_settings.VERIFY_SESSION_TOKEN:
             try:
-                SessionToken.objects.active().get(pk=payload.get('sid'), user_id=payload.get('uid'))
+                session_token = SessionToken.objects.\
+                    active().\
+                    select_related('user').\
+                    get(pk=payload.get('sid'), user_id=payload.get('uid'))
+                user = session_token.user
             except SessionToken.DoesNotExist:
                 raise exceptions.AuthenticationFailed(_('Invalid token.'))
-
-        try:
-            user = user_model.objects.get(pk=payload.get('uid'))
-        except user_model.DoesNotExist:
-            raise exceptions.AuthenticationFailed(_('Invalid token.'))
+        else:
+            try:
+                user = user_model.objects.get(pk=payload.get('uid'))
+            except user_model.DoesNotExist:
+                raise exceptions.AuthenticationFailed(_('Invalid token.'))
 
         if not user.is_active:
             raise exceptions.AuthenticationFailed(_('User inactive or deleted.'))
