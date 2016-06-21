@@ -15,7 +15,7 @@ Quick start
         'rest_framework_sso',
     ]
 
-2. Include the session and authorization token URLs:
+2. Include the session and authorization token URLs::
 
     from rest_framework_sso.views import obtain_session_token, obtain_authorization_token
 
@@ -29,7 +29,7 @@ Quick start
 Authentication class
 --------------------
 In order to get-or-create User accounts automatically within your microservice apps,
-you can use the following DRF Authentication class template:
+you can use the following DRF Authentication class template::
 
     class Authentication(rest_framework_sso.authentication.JWTAuthentication):
         def authenticate_credentials(self, payload):
