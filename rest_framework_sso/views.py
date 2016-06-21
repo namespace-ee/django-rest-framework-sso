@@ -85,6 +85,9 @@ class ObtainAuthorizationTokenView(BaseAPIView):
     serializer_class = AuthorizationTokenSerializer
 
     def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
         if hasattr(request.auth, 'get') and request.auth.get('sid'):
             try:
                 session_token = SessionToken.objects.active().\
@@ -97,7 +100,11 @@ class ObtainAuthorizationTokenView(BaseAPIView):
 
         session_token.update_attributes(request=request)
         session_token.save()
-        payload = create_authorization_payload(session_token=session_token, user=request.user)
+        payload = create_authorization_payload(
+            session_token=session_token,
+            user=request.user,
+            **serializer.validated_data
+        )
         jwt_token = encode_jwt_token(payload=payload)
         return Response({'token': jwt_token})
 
