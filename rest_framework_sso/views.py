@@ -1,6 +1,7 @@
 # coding: utf-8
 from __future__ import absolute_import, unicode_literals
 
+from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -67,7 +68,8 @@ class ObtainSessionTokenView(BaseAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
-        session_token, created = SessionToken.objects.active().first_or_create(user=user)
+        session_token, created = SessionToken.objects.active().\
+            first_or_create(user=user, request_meta=request.META)
         session_token.update_attributes(request=request)
         session_token.save()
         payload = create_session_payload(session_token=session_token, user=user)
@@ -84,9 +86,14 @@ class ObtainAuthorizationTokenView(BaseAPIView):
 
     def post(self, request, *args, **kwargs):
         if hasattr(request.auth, 'get') and request.auth.get('sid'):
-            session_token, created = SessionToken.objects.active().first_or_create(pk=request.auth.get('sid'), user=request.user)
+            try:
+                session_token = SessionToken.objects.active().\
+                    get(pk=request.auth.get('sid'), user=request.user)
+            except SessionToken.DoesNotExist:
+                return Response({'detail': 'Invalid token.'}, status=status.HTTP_401_UNAUTHORIZED)
         else:
-            session_token, created = SessionToken.objects.active().first_or_create(user=request.user)
+            session_token, created = SessionToken.objects.active().\
+                first_or_create(user=request.user, request_meta=request.META)
 
         session_token.update_attributes(request=request)
         session_token.save()
