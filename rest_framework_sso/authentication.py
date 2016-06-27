@@ -2,7 +2,6 @@
 from __future__ import absolute_import, unicode_literals
 
 import jwt
-from django.contrib.auth import get_user_model
 from django.utils.encoding import smart_text
 from django.utils.translation import ugettext as _
 from rest_framework import exceptions
@@ -13,6 +12,7 @@ from rest_framework.authentication import (
 from rest_framework_sso.settings import api_settings
 
 decode_jwt_token = api_settings.DECODE_JWT_TOKEN
+authenticate_payload = api_settings.AUTHENTICATE_PAYLOAD
 
 
 class JWTAuthentication(BaseAuthentication):
@@ -59,28 +59,7 @@ class JWTAuthentication(BaseAuthentication):
         return self.authenticate_credentials(payload=payload)
 
     def authenticate_credentials(self, payload):
-        from rest_framework_sso.models import SessionToken
-
-        user_model = get_user_model()
-
-        if api_settings.VERIFY_SESSION_TOKEN:
-            try:
-                session_token = SessionToken.objects.\
-                    active().\
-                    select_related('user').\
-                    get(pk=payload.get('sid'), user_id=payload.get('uid'))
-                user = session_token.user
-            except SessionToken.DoesNotExist:
-                raise exceptions.AuthenticationFailed(_('Invalid token.'))
-        else:
-            try:
-                user = user_model.objects.get(pk=payload.get('uid'))
-            except user_model.DoesNotExist:
-                raise exceptions.AuthenticationFailed(_('Invalid token.'))
-
-        if not user.is_active:
-            raise exceptions.AuthenticationFailed(_('User inactive or deleted.'))
-
+        user = authenticate_payload(payload=payload)
         return user, payload
 
     def authenticate_header(self, request):

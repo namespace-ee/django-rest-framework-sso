@@ -4,9 +4,12 @@ from __future__ import absolute_import, unicode_literals
 from datetime import datetime
 
 import jwt
+from django.contrib.auth import get_user_model
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils import six
+from django.utils.translation import gettext_lazy as _
 from jwt.exceptions import MissingRequiredClaimError, InvalidIssuerError
+from rest_framework import exceptions
 
 from rest_framework_sso.settings import api_settings
 
@@ -100,3 +103,29 @@ def decode_jwt_token(token):
         audience=api_settings.IDENTITY,
         issuer=unverified_issuer,
     )
+
+
+def authenticate_payload(payload):
+    from rest_framework_sso.models import SessionToken
+
+    user_model = get_user_model()
+
+    if api_settings.VERIFY_SESSION_TOKEN:
+        try:
+            session_token = SessionToken.objects.\
+                active().\
+                select_related('user').\
+                get(pk=payload.get('sid'), user_id=payload.get('uid'))
+            user = session_token.user
+        except SessionToken.DoesNotExist:
+            raise exceptions.AuthenticationFailed(_('Invalid token.'))
+    else:
+        try:
+            user = user_model.objects.get(pk=payload.get('uid'))
+        except user_model.DoesNotExist:
+            raise exceptions.AuthenticationFailed(_('Invalid token.'))
+
+    if not user.is_active:
+        raise exceptions.AuthenticationFailed(_('User inactive or deleted.'))
+
+    return user
