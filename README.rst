@@ -5,6 +5,16 @@ Django REST Framework SSO
 Django REST Framework SSO is an extension to Django REST Framework that enables
 Single sign-on in a microservice-oriented environment using the JWT standard.
 
+This library provides two types of JWT tokens:
+
+1. non-expiring session tokens for your primary login application (aka. "refresh tokens")
+
+2. short-lived authorization tokens for accessing your other apps (these contain permissions given by the primary app)
+
+The client is expected to first login to your primary login application by POSTing an username and password. The client will receive a permanent session token that will allow subsequent requests to the same server be authenticated. These tokens do not contain any permissions/authorization information and cannot be used for SSO into other apps.
+
+Afterwards, the client is expected to obtain and keep updating authorization tokens using the session token. These secondary tokens are short-lived (15mins..1 hour) and contain the permissions that the user has at the time of issuance. These tokens are used to access other services, which then trust the permissions in the JWT payload for the lifetime of the token.
+
 Quick start
 -----------
 
