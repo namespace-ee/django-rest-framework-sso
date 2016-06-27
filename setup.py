@@ -2,11 +2,27 @@
 import os
 from setuptools import find_packages, setup
 
+
+def get_install_requires():
+    """
+    parse requirements.txt, ignore links, exclude comments
+    """
+    requirements = []
+    for line in open('requirements.txt').readlines():
+        # skip to next iteration if comment or empty line
+        if line.startswith('#') or line == '' or line.startswith('http') or line.startswith('git'):
+            continue
+        # add line to requirements
+        requirements.append(line)
+    return requirements
+
+
 with open(os.path.join(os.path.dirname(__file__), 'README.rst')) as readme:
     README = readme.read()
 
 # allow setup.py to be run from any path
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
+
 
 setup(
     name='djangorestframework-sso',
@@ -37,8 +53,5 @@ setup(
         'Topic :: Internet :: WWW/HTTP :: Session',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    install_requires=[
-        'PyJWT>=1.4.0,<2.0.0',
-        'cryptography>=1.4,<2.0',
-    ],
+    install_requires=get_install_requires(),
 )
