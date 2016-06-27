@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils import six
 from django.utils.translation import gettext_lazy as _
-from jwt.exceptions import MissingRequiredClaimError, InvalidIssuerError
+from jwt.exceptions import MissingRequiredClaimError, InvalidIssuerError, InvalidTokenError
 from rest_framework import exceptions
 
 from rest_framework_sso import claims
@@ -94,7 +94,7 @@ def decode_jwt_token(token):
         'verify_iss': True,
     }
 
-    return jwt.decode(
+    payload = jwt.decode(
         jwt=token,
         key=public_key,
         verify=api_settings.VERIFY_SIGNATURE,
@@ -104,6 +104,13 @@ def decode_jwt_token(token):
         audience=api_settings.IDENTITY,
         issuer=unverified_issuer,
     )
+
+    if payload.get(claims.TOKEN) not in (claims.TOKEN_SESSION, claims.TOKEN_AUTHORIZATION):
+        raise InvalidTokenError('Unknown token type')
+    if payload.get(claims.ISSUER) != api_settings.IDENTITY and payload.get(claims.TOKEN) != claims.TOKEN_AUTHORIZATION:
+        raise InvalidTokenError('Only authorization tokens are accepted from other issuers')
+
+    return payload
 
 
 def authenticate_payload(payload):
