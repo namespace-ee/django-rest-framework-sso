@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from rest_framework_sso import claims
 from rest_framework_sso.models import SessionToken
 from rest_framework_sso.serializers import SessionTokenSerializer, AuthorizationTokenSerializer
 from rest_framework_sso.settings import api_settings
@@ -88,10 +89,10 @@ class ObtainAuthorizationTokenView(BaseAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        if hasattr(request.auth, 'get') and request.auth.get('sid'):
+        if hasattr(request.auth, 'get') and request.auth.get(claims.SESSION_ID):
             try:
                 session_token = SessionToken.objects.active().\
-                    get(pk=request.auth.get('sid'), user=request.user)
+                    get(pk=request.auth.get(claims.SESSION_ID), user=request.user)
             except SessionToken.DoesNotExist:
                 return Response({'detail': 'Invalid token.'}, status=status.HTTP_401_UNAUTHORIZED)
         else:

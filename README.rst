@@ -31,13 +31,15 @@ Authentication class
 In order to get-or-create User accounts automatically within your microservice apps,
 you can use the following DRF Authentication class template::
 
+    from rest_framework_sso import claims
+    
     class Authentication(rest_framework_sso.authentication.JWTAuthentication):
         def authenticate_credentials(self, payload):
             user_model = get_user_model()
 
             user, created = user_model.objects.get_or_create(
-                service=payload.get('iss'),
-                external_id=payload.get('uid'),
+                service=payload.get(claims.ISSUER),
+                external_id=payload.get(claims.USER_ID),
             )
 
             if not user.is_active:
