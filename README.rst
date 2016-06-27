@@ -25,24 +25,173 @@ Quick start
         url(r'^authorize/', obtain_authorization_token),
     ]
 
+Additional data in authorization tokens
+---------------------------------------
+For example, you may want to include an `account` field in your JWT authorization tokens,
+so that `otherapp` will know about the user's permissions. To do this, you may need to override
+the ObtainAuthorizationTokenView and AuthorizationTokenSerializer::
 
-Authentication class
---------------------
+    class ObtainAuthorizationTokenView(rest_framework_sso.views.ObtainAuthorizationTokenView):
+        """
+        Returns a JSON Web Token that can be used for authenticated requests.
+        """
+        serializer_class = AuthorizationTokenSerializer
+
+
+    class AuthorizationTokenSerializer(QuerySetReadableMixin, serializers.Serializer):
+        account = serializers.HyperlinkedRelatedField(
+            queryset=Account.objects.all(),
+            required=True,
+            view_name='api:account-detail',
+        )
+
+        class Meta:
+            fields = ['account']
+
+Replace the authorization token view in your URL conf::
+
+    urlpatterns = [
+        url(r'^authorize/$', ObtainAuthorizationTokenView.as_view()),
+        ...
+    ]
+
+Add the `account` keyword argument to the `create_authorization_payload` function::
+
+    from rest_framework_sso import claims
+
+    def create_authorization_payload(session_token, user, account, **kwargs):
+        return {
+            claims.TOKEN: claims.TOKEN_AUTHORIZATION,
+            claims.SESSION_ID: session_token.pk,
+            claims.USER_ID: user.pk,
+            claims.EMAIL: user.email,
+            'account': account.pk,
+        }
+
+You will need to activete this function in the settings::
+
+    REST_FRAMEWORK_SSO = {
+        'CREATE_AUTHORIZATION_PAYLOAD': 'myapp.authentication.create_authorization_payload',
+        ...
+    }
+
+JWT Authentication
+------------------
 In order to get-or-create User accounts automatically within your microservice apps,
-you can use the following DRF Authentication class template::
+you may need to write your custom JWT payload authentication function::
+
+    from django.contrib.auth import get_user_model
+    from rest_framework_sso import claims
+    
+    def authenticate_payload(payload):
+        user_model = get_user_model()
+        user, created = user_model.objects.get_or_create(
+            service=payload.get(claims.ISSUER),
+            external_id=payload.get(claims.USER_ID),
+        )
+        if not user.is_active:
+            raise exceptions.AuthenticationFailed(_('User inactive or deleted.'))
+        return user
+
+
+Enable authenticate_payload function in REST_FRAMEWORK_SSO settings::
+
+    REST_FRAMEWORK_SSO = {
+        'AUTHENTICATE_PAYLOAD': 'otherapp.authentication.authenticate_payload',
+        ...
+    }
+
+Enable JWT authentication in the REST_FRAMEWORK settings::
+
+    REST_FRAMEWORK = {
+        'DEFAULT_AUTHENTICATION_CLASSES': (
+            'rest_framework_sso.authentication.JWTAuthentication',
+            'rest_framework.authentication.SessionAuthentication',
+            ...
+        ),
+        ...
+    }
+
+Requests that have been successfully authenticated with JWTAuthentication contain
+the JWT payload data in the `request.auth` variable. This data can be used in your
+API views/viewsets to handle permissions, for example::
 
     from rest_framework_sso import claims
     
-    class Authentication(rest_framework_sso.authentication.JWTAuthentication):
-        def authenticate_credentials(self, payload):
-            user_model = get_user_model()
+    class UserViewSet(viewsets.ReadOnlyModelViewSet):
+        serializer_class = UserSerializer
+        queryset = User.objects.none()
 
-            user, created = user_model.objects.get_or_create(
-                service=payload.get(claims.ISSUER),
-                external_id=payload.get(claims.USER_ID),
+        def get_queryset(self):
+            if not request.user.is_authenticated() or not request.auth:
+                return self.none()
+            return User.objects.filter(
+                service=request.auth.get(claims.ISSUER),
+                external_id=request.auth.get(claims.USER_ID),
             )
 
-            if not user.is_active:
-                raise exceptions.AuthenticationFailed(_('User inactive or deleted.'))
+Settings
+--------
+Example settings for project that both issues and validates tokens for `myapp` and `otherapp`::
 
-            return user, payload
+    REST_FRAMEWORK_SSO = {
+        'CREATE_AUTHORIZATION_PAYLOAD': 'myapp.authentication.create_authorization_payload',
+        'IDENTITY': 'myapp',
+        'SESSION_AUDIENCE': ['myapp'],
+        'AUTHORIZATION_AUDIENCE': ['myapp', 'otherapp'],
+        'ACCEPTED_ISSUERS': ['myapp'],
+        'PUBLIC_KEYS': {
+            'myapp': 'keys/myapp_public_key.pem',
+        },
+        'PRIVATE_KEYS': {
+            'myapp': 'keys/myapp_private_key.pem',
+        },
+    }
+    
+Example settings for project that only accepts tokens signed by `myapp` for `otherapp`::
+
+    REST_FRAMEWORK_SSO = {
+        'AUTHENTICATE_PAYLOAD': 'otherapp.authentication.authenticate_payload',
+        'VERIFY_SESSION_TOKEN': False,
+        'IDENTITY': 'otherapp',
+        'ACCEPTED_ISSUERS': ['myapp'],
+        'PUBLIC_KEYS': {
+            'myapp': 'keys/myapp_public_key.pem',
+        },
+    }
+
+Full list of settings parameters with their defaults::
+
+    REST_FRAMEWORK_SSO = {
+        'CREATE_SESSION_PAYLOAD': 'rest_framework_sso.utils.create_session_payload',
+        'CREATE_AUTHORIZATION_PAYLOAD': 'rest_framework_sso.utils.create_authorization_payload',
+        'ENCODE_JWT_TOKEN': 'rest_framework_sso.utils.encode_jwt_token',
+        'DECODE_JWT_TOKEN': 'rest_framework_sso.utils.decode_jwt_token',
+        'AUTHENTICATE_PAYLOAD': 'rest_framework_sso.utils.authenticate_payload',
+
+        'ENCODE_ALGORITHM': 'RS256',
+        'DECODE_ALGORITHMS': None,
+        'VERIFY_SIGNATURE': True,
+        'VERIFY_EXPIRATION': True,
+        'VERIFY_SESSION_TOKEN': True,
+        'EXPIRATION_LEEWAY': 0,
+        'SESSION_EXPIRATION': None,
+        'AUTHORIZATION_EXPIRATION': datetime.timedelta(seconds=300),
+
+        'IDENTITY': None,
+        'SESSION_AUDIENCE': None,
+        'AUTHORIZATION_AUDIENCE': None,
+        'ACCEPTED_ISSUERS': None,
+        'PUBLIC_KEYS': {},
+        'PRIVATE_KEYS': {},
+
+        'AUTHENTICATE_HEADER': 'JWT',
+    }
+
+Generating RSA keys
+-------------------
+You can use openssl to generate your public/private key pairs::
+
+    $ openssl genpkey -algorithm RSA -out private_key.pem -pkeyopt rsa_keygen_bits:2048
+    $ openssl rsa -pubout -in private_key.pem -out public_key.pem
+
