@@ -138,30 +138,39 @@ def read_key_file(file_name):
     return open(file_path, 'rt').read()
 
 
-def get_key_file_name_and_id(keys, issuer, key_id=None):
+def get_key_id(file_name):
+    suffixes = ['.pem']
+    for suffix in suffixes:
+        if file_name.lower().endswith(suffix):
+            return file_name[:-len(suffix)]
+    return file_name
+
+
+def get_key_file_name(keys, issuer, key_id=None):
     if not keys.get(issuer):
         raise InvalidKeyError('No keys defined for the given issuer')
     issuer_keys = keys.get(issuer)
     if isinstance(issuer_keys, (str, six.text_type)):
         issuer_keys = [issuer_keys]
-    issuer_keys = [ik for ik in issuer_keys if not key_id or key_id == ik]
+    if key_id:
+        issuer_keys = [ik for ik in issuer_keys if key_id in (ik, get_key_id(ik))]
     if len(issuer_keys) < 1:
         raise InvalidKeyError('No key matches the given key_id')
-    return issuer_keys[0], issuer_keys[0]
+    return issuer_keys[0]
 
 
 def get_private_key_and_key_id(issuer, key_id=None):
-    file_name, found_key_id = get_key_file_name_and_id(keys=api_settings.PRIVATE_KEYS, issuer=issuer, key_id=key_id)
+    file_name = get_key_file_name(keys=api_settings.PRIVATE_KEYS, issuer=issuer, key_id=key_id)
     file_data = read_key_file(file_name=file_name)
     key = load_pem_private_key(file_data, password=None, backend=default_backend())
-    return key, found_key_id
+    return key, get_key_id(file_name=file_name)
 
 
 def get_public_key_and_key_id(issuer, key_id=None):
-    file_name, found_key_id = get_key_file_name_and_id(keys=api_settings.PUBLIC_KEYS, issuer=issuer, key_id=key_id)
+    file_name = get_key_file_name(keys=api_settings.PUBLIC_KEYS, issuer=issuer, key_id=key_id)
     file_data = read_key_file(file_name=file_name)
     key = load_pem_public_key(file_data, backend=default_backend())
-    return key, found_key_id
+    return key, get_key_id(file_name=file_name)
 
 
 def authenticate_payload(payload):
