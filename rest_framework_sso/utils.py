@@ -126,6 +126,10 @@ def decode_jwt_token(token):
         raise InvalidTokenError('Unknown token type')
     if payload.get(claims.ISSUER) != api_settings.IDENTITY and payload.get(claims.TOKEN) != claims.TOKEN_AUTHORIZATION:
         raise InvalidTokenError('Only authorization tokens are accepted from other issuers')
+    if not payload.get(claims.SESSION_ID):
+        raise MissingRequiredClaimError('Session ID is missing.')
+    if not payload.get(claims.USER_ID):
+        raise MissingRequiredClaimError('User ID is missing.')
 
     return payload
 
@@ -177,9 +181,6 @@ def authenticate_payload(payload):
     from rest_framework_sso.models import SessionToken
 
     user_model = get_user_model()
-
-    if not payload.get(claims.SESSION_ID) or not payload.get(claims.USER_ID):
-        raise exceptions.AuthenticationFailed(_('Invalid token.'))
 
     if api_settings.VERIFY_SESSION_TOKEN:
         try:
