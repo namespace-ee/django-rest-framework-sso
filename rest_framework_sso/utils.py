@@ -178,6 +178,9 @@ def authenticate_payload(payload):
 
     user_model = get_user_model()
 
+    if not payload.get(claims.SESSION_ID) or not payload.get(claims.USER_ID):
+        raise exceptions.AuthenticationFailed(_('Invalid token.'))
+
     if api_settings.VERIFY_SESSION_TOKEN:
         try:
             session_token = SessionToken.objects.\
