@@ -192,6 +192,7 @@ Full list of settings parameters with their defaults::
         'SESSION_AUDIENCE': None,
         'AUTHORIZATION_AUDIENCE': None,
         'ACCEPTED_ISSUERS': None,
+        'KEY_STORE_ROOT': None,
         'PUBLIC_KEYS': {},
         'PRIVATE_KEYS': {},
 

@@ -1,6 +1,7 @@
 # coding: utf-8
 from __future__ import absolute_import, unicode_literals
 
+import os
 from datetime import datetime
 
 import jwt
@@ -125,6 +126,14 @@ def decode_jwt_token(token):
     return payload
 
 
+def read_key_file(file_name):
+    if api_settings.KEY_STORE_ROOT:
+        file_path = os.path.abspath(os.path.join(api_settings.KEY_STORE_ROOT, file_name))
+    else:
+        file_path = os.path.abspath(file_name)
+    return open(file_path, 'rt').read()
+
+
 def get_private_key_and_key_id(issuer, key_id=None):
     if not api_settings.PRIVATE_KEYS.get(issuer):
         raise InvalidKeyError('No private keys defined for the given issuer')
@@ -133,7 +142,7 @@ def get_private_key_and_key_id(issuer, key_id=None):
         private_keys_setting = [private_keys_setting]
     for pks in private_keys_setting:
         if not key_id or key_id == pks:
-            return open(pks, 'rt').read(), pks
+            return read_key_file(file_name=pks), pks
     raise InvalidKeyError('No private key matches the given key_id')
 
 
@@ -150,7 +159,7 @@ def get_public_key_and_key_id(issuer, key_id=None):
         public_keys_setting = [public_keys_setting]
     for pks in public_keys_setting:
         if not key_id or key_id == pks:
-            return open(pks, 'rt').read(), pks
+            return read_key_file(file_name=pks), pks
     raise InvalidKeyError('No public key matches the given key_id')
 
 
