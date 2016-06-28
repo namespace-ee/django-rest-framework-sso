@@ -56,7 +56,14 @@ class SessionToken(models.Model):
         return six.text_type(self.id)
 
     def update_attributes(self, request):
-        self.ip_address = request.META.get('HTTP_X_FORWARDED_FOR') \
-            if request.META.get('HTTP_X_FORWARDED_FOR') \
-            else request.META.get('REMOTE_ADDR')
-        self.user_agent = request.META.get('HTTP_USER_AGENT')[:1000]
+        if request.META.get('HTTP_X_FORWARDED_FOR'):
+            self.ip_address = request.META.get('HTTP_X_FORWARDED_FOR')
+        elif request.META.get('REMOTE_ADDR'):
+            self.ip_address = request.META.get('REMOTE_ADDR')
+        else:
+            self.ip_address = None
+
+        if request.META.get('HTTP_USER_AGENT'):
+            self.user_agent = request.META.get('HTTP_USER_AGENT')[:1000]
+        else:
+            self.user_agent = ''
