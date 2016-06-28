@@ -11,6 +11,10 @@ from django.utils import six
 from django.utils.translation import gettext_lazy as _
 from jwt.exceptions import MissingRequiredClaimError, InvalidIssuerError, InvalidTokenError, InvalidKeyError
 from rest_framework import exceptions
+from cryptography.hazmat.primitives.serialization import (
+    load_pem_private_key, load_pem_public_key, load_ssh_public_key
+)
+from cryptography.hazmat.backends import default_backend
 
 from rest_framework_sso import claims
 from rest_framework_sso.settings import api_settings
@@ -142,7 +146,9 @@ def get_private_key_and_key_id(issuer, key_id=None):
         private_keys_setting = [private_keys_setting]
     for pks in private_keys_setting:
         if not key_id or key_id == pks:
-            return read_key_file(file_name=pks), pks
+            file_data = read_key_file(file_name=pks)
+            key = load_pem_private_key(file_data, password=None, backend=default_backend())
+            return key, pks
     raise InvalidKeyError('No private key matches the given key_id')
 
 
@@ -159,7 +165,9 @@ def get_public_key_and_key_id(issuer, key_id=None):
         public_keys_setting = [public_keys_setting]
     for pks in public_keys_setting:
         if not key_id or key_id == pks:
-            return read_key_file(file_name=pks), pks
+            file_data = read_key_file(file_name=pks)
+            key = load_pem_public_key(file_data, backend=default_backend())
+            return key, pks
     raise InvalidKeyError('No public key matches the given key_id')
 
 
