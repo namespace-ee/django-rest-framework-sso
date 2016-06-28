@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils import six
 from django.utils.translation import gettext_lazy as _
-from jwt.exceptions import MissingRequiredClaimError, InvalidIssuerError, InvalidTokenError
+from jwt.exceptions import MissingRequiredClaimError, InvalidIssuerError, InvalidTokenError, InvalidKeyError
 from rest_framework import exceptions
 
 from rest_framework_sso import claims
@@ -66,18 +66,29 @@ def encode_jwt_token(payload):
     if payload[claims.ISSUER] not in api_settings.PRIVATE_KEYS:
         raise RuntimeError('Private key for specified issuer was not found in settings')
 
-    private_key = open(api_settings.PRIVATE_KEYS.get(payload[claims.ISSUER]), 'rt').read()
+    private_key, key_id = get_private_key_and_key_id(issuer=payload[claims.ISSUER])
+
+    headers = {
+        claims.KEY_ID: key_id,
+    }
 
     return jwt.encode(
         payload=payload,
         key=private_key,
         algorithm=api_settings.ENCODE_ALGORITHM,
+        headers=headers,
         json_encoder=DjangoJSONEncoder,
     ).decode('utf-8')
 
 
 def decode_jwt_token(token):
+    unverified_header = jwt.get_unverified_header(token)
     unverified_claims = jwt.decode(token, verify=False)
+
+    if unverified_header.get(claims.KEY_ID):
+        unverified_key_id = six.text_type(unverified_header.get(claims.KEY_ID))
+    else:
+        unverified_key_id = None
 
     if claims.ISSUER not in unverified_claims:
         raise MissingRequiredClaimError(claims.ISSUER)
@@ -86,10 +97,8 @@ def decode_jwt_token(token):
 
     if api_settings.ACCEPTED_ISSUERS is not None and unverified_issuer not in api_settings.ACCEPTED_ISSUERS:
         raise InvalidIssuerError('Invalid issuer')
-    if unverified_issuer not in api_settings.PUBLIC_KEYS:
-        raise InvalidIssuerError('Invalid issuer')
 
-    public_key = open(api_settings.PUBLIC_KEYS.get(unverified_issuer), 'rt').read()
+    public_key = get_public_key(issuer=unverified_issuer, key_id=unverified_key_id)
 
     options = {
         'verify_exp': api_settings.VERIFY_EXPIRATION,
@@ -114,6 +123,40 @@ def decode_jwt_token(token):
         raise InvalidTokenError('Only authorization tokens are accepted from other issuers')
 
     return payload
+
+
+def get_private_key_and_key_id(issuer, key_id=None):
+    if not api_settings.PRIVATE_KEYS.get(issuer):
+        raise InvalidKeyError('No private keys defined for the given issuer')
+    private_keys_setting = api_settings.PRIVATE_KEYS.get(issuer)
+    if isinstance(private_keys_setting, (str, six.text_type)):
+        private_keys_setting = [private_keys_setting]
+    for pks in private_keys_setting:
+        if not key_id or key_id == pks:
+            return open(pks, 'rt').read(), pks
+    raise InvalidKeyError('No private key matches the given key_id')
+
+
+def get_private_key(issuer, key_id=None):
+    private_key, key_id = get_private_key_and_key_id(issuer=issuer, key_id=key_id)
+    return private_key
+
+
+def get_public_key_and_key_id(issuer, key_id=None):
+    if not api_settings.PUBLIC_KEYS.get(issuer):
+        raise InvalidKeyError('No public keys defined for the given issuer')
+    public_keys_setting = api_settings.PUBLIC_KEYS.get(issuer)
+    if isinstance(public_keys_setting, (str, six.text_type)):
+        public_keys_setting = [public_keys_setting]
+    for pks in public_keys_setting:
+        if not key_id or key_id == pks:
+            return open(pks, 'rt').read(), pks
+    raise InvalidKeyError('No public key matches the given key_id')
+
+
+def get_public_key(issuer, key_id=None):
+    public_key, key_id = get_public_key_and_key_id(issuer=issuer, key_id=key_id)
+    return public_key
 
 
 def authenticate_payload(payload):
