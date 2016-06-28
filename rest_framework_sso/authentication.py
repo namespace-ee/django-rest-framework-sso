@@ -1,7 +1,7 @@
 # coding: utf-8
 from __future__ import absolute_import, unicode_literals
 
-import jwt
+import jwt.exceptions
 from django.utils.encoding import smart_text
 from django.utils.translation import ugettext as _
 from rest_framework import exceptions
@@ -47,13 +47,16 @@ class JWTAuthentication(BaseAuthentication):
 
         try:
             payload = decode_jwt_token(token=token)
-        except jwt.ExpiredSignature:
+        except jwt.exceptions.ExpiredSignature:
             msg = _('Signature has expired.')
             raise exceptions.AuthenticationFailed(msg)
-        except jwt.DecodeError:
+        except jwt.exceptions.DecodeError:
             msg = _('Error decoding signature.')
             raise exceptions.AuthenticationFailed(msg)
-        except jwt.InvalidTokenError:
+        except jwt.exceptions.InvalidKeyError:
+            msg = _('Unauthorized token signing key.')
+            raise exceptions.AuthenticationFailed(msg)
+        except jwt.exceptions.InvalidTokenError:
             raise exceptions.AuthenticationFailed()
 
         return self.authenticate_credentials(payload=payload)
