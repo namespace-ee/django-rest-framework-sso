@@ -60,6 +60,9 @@ def encode_jwt_token(payload):
         elif payload.get(claims.TOKEN) == claims.TOKEN_AUTHORIZATION and api_settings.AUTHORIZATION_EXPIRATION is not None:
             payload[claims.EXPIRATION_TIME] = datetime.utcnow() + api_settings.AUTHORIZATION_EXPIRATION
 
+    if not payload.get(claims.ISSUED_AT):
+        payload[claims.ISSUED_AT] = datetime.utcnow()
+
     if payload[claims.ISSUER] not in api_settings.PRIVATE_KEYS:
         raise RuntimeError('Private key for specified issuer was not found in settings')
 
