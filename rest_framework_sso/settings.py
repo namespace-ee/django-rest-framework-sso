@@ -4,6 +4,7 @@ from __future__ import absolute_import, unicode_literals
 import datetime
 
 from django.conf import settings
+from django.test.signals import setting_changed
 from rest_framework.settings import APISettings
 
 
@@ -46,3 +47,13 @@ IMPORT_STRINGS = (
 )
 
 api_settings = APISettings(USER_SETTINGS, DEFAULTS, IMPORT_STRINGS)
+
+
+def reload_api_settings(*args, **kwargs):
+    global api_settings
+    setting, value = kwargs['setting'], kwargs['value']
+    if setting == 'REST_FRAMEWORK_SSO':
+        api_settings = APISettings(value, DEFAULTS, IMPORT_STRINGS)
+
+
+setting_changed.connect(reload_api_settings)
