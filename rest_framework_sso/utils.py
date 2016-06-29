@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import absolute_import, unicode_literals
 
-import os
 from datetime import datetime
 
 import jwt
@@ -9,14 +8,11 @@ from django.contrib.auth import get_user_model
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils import six
 from django.utils.translation import gettext_lazy as _
-from jwt.exceptions import MissingRequiredClaimError, InvalidIssuerError, InvalidTokenError, InvalidKeyError
+from jwt.exceptions import MissingRequiredClaimError, InvalidIssuerError, InvalidTokenError
 from rest_framework import exceptions
-from cryptography.hazmat.primitives.serialization import (
-    load_pem_private_key, load_pem_public_key, load_ssh_public_key
-)
-from cryptography.hazmat.backends import default_backend
 
 from rest_framework_sso import claims
+from rest_framework_sso.keys import get_private_key_and_key_id, get_public_key_and_key_id
 from rest_framework_sso.settings import api_settings
 
 
@@ -132,49 +128,6 @@ def decode_jwt_token(token):
         raise MissingRequiredClaimError('User ID is missing.')
 
     return payload
-
-
-def read_key_file(file_name):
-    if api_settings.KEY_STORE_ROOT:
-        file_path = os.path.abspath(os.path.join(api_settings.KEY_STORE_ROOT, file_name))
-    else:
-        file_path = os.path.abspath(file_name)
-    return open(file_path, 'rt').read()
-
-
-def get_key_id(file_name):
-    suffixes = ['.pem']
-    for suffix in suffixes:
-        if file_name.lower().endswith(suffix):
-            return file_name[:-len(suffix)]
-    return file_name
-
-
-def get_key_file_name(keys, issuer, key_id=None):
-    if not keys.get(issuer):
-        raise InvalidKeyError('No keys defined for the given issuer')
-    issuer_keys = keys.get(issuer)
-    if isinstance(issuer_keys, (str, six.text_type)):
-        issuer_keys = [issuer_keys]
-    if key_id:
-        issuer_keys = [ik for ik in issuer_keys if key_id in (ik, get_key_id(ik))]
-    if len(issuer_keys) < 1:
-        raise InvalidKeyError('No key matches the given key_id')
-    return issuer_keys[0]
-
-
-def get_private_key_and_key_id(issuer, key_id=None):
-    file_name = get_key_file_name(keys=api_settings.PRIVATE_KEYS, issuer=issuer, key_id=key_id)
-    file_data = read_key_file(file_name=file_name)
-    key = load_pem_private_key(file_data, password=None, backend=default_backend())
-    return key, get_key_id(file_name=file_name)
-
-
-def get_public_key_and_key_id(issuer, key_id=None):
-    file_name = get_key_file_name(keys=api_settings.PUBLIC_KEYS, issuer=issuer, key_id=key_id)
-    file_data = read_key_file(file_name=file_name)
-    key = load_pem_public_key(file_data, backend=default_backend())
-    return key, get_key_id(file_name=file_name)
 
 
 def authenticate_payload(payload):
