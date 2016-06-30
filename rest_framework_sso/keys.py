@@ -14,7 +14,8 @@ def read_key_file(file_name):
         file_path = os.path.abspath(os.path.join(api_settings.KEY_STORE_ROOT, file_name))
     else:
         file_path = os.path.abspath(file_name)
-    return open(file_path, 'rb').read()
+    with open(file_path, 'rb') as file_obj:
+        return file_obj.read()
 
 
 def get_key_id(file_name):
