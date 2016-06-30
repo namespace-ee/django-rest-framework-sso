@@ -26,8 +26,8 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='djangorestframework-sso',
-    version='0.0.8',
-    packages=find_packages(),
+    version='0.0.9',
+    packages=find_packages(exclude=['tests']),
     include_package_data=True,
     license='MIT License',
     description='Single sign-on extension to the Django REST Framework.',
