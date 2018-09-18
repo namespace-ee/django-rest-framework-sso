@@ -151,10 +151,10 @@ Example settings for project that both issues and validates tokens for `myapp` a
         'AUTHORIZATION_AUDIENCE': ['myapp', 'otherapp'],
         'ACCEPTED_ISSUERS': ['myapp'],
         'PUBLIC_KEYS': {
-            'myapp': 'keys/myapp_public_key.pem',
+            'myapp': 'keys/myapp-20180101.pem',
         },
         'PRIVATE_KEYS': {
-            'myapp': 'keys/myapp_private_key.pem',
+            'myapp': 'keys/myapp-20180101.pem',
         },
     }
     
@@ -166,7 +166,7 @@ Example settings for project that only accepts tokens signed by `myapp` for `oth
         'IDENTITY': 'otherapp',
         'ACCEPTED_ISSUERS': ['myapp'],
         'PUBLIC_KEYS': {
-            'myapp': 'keys/myapp_public_key.pem',
+            'myapp': 'keys/myapp-20180101.pem',
         },
     }
 
@@ -205,4 +205,5 @@ You can use openssl to generate your public/private key pairs::
 
     $ openssl genpkey -algorithm RSA -out private_key.pem -pkeyopt rsa_keygen_bits:2048
     $ openssl rsa -pubout -in private_key.pem -out public_key.pem
+    $ cat private_key.pem public_key.pem > keys/myapp-20180101.pem
 
