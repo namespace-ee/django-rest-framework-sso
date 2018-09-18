@@ -151,14 +151,14 @@ Example settings for project that both issues and validates tokens for `myapp` a
         'AUTHORIZATION_AUDIENCE': ['myapp', 'otherapp'],
         'ACCEPTED_ISSUERS': ['myapp'],
         'PUBLIC_KEYS': {
-            'myapp': 'keys/myapp-20180101.pem',
+            'myapp': 'keys/myapp-20180101.pem',  # both private/public key in same file
         },
         'PRIVATE_KEYS': {
-            'myapp': 'keys/myapp-20180101.pem',
+            'myapp': 'keys/myapp-20180101.pem',  # both private/public key in same file
         },
     }
     
-Example settings for project that only accepts tokens signed by `myapp` for `otherapp`::
+Example settings for project that only accepts tokens signed by `myapp` public key for `otherapp`::
 
     REST_FRAMEWORK_SSO = {
         'AUTHENTICATE_PAYLOAD': 'otherapp.authentication.authenticate_payload',
@@ -166,7 +166,7 @@ Example settings for project that only accepts tokens signed by `myapp` for `oth
         'IDENTITY': 'otherapp',
         'ACCEPTED_ISSUERS': ['myapp'],
         'PUBLIC_KEYS': {
-            'myapp': 'keys/myapp-20180101.pem',
+            'myapp': 'keys/myapp-20180101.pem',  # only public key in this file
         },
     }
 
