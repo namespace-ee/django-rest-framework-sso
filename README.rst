@@ -48,7 +48,7 @@ the ObtainAuthorizationTokenView and AuthorizationTokenSerializer::
         serializer_class = AuthorizationTokenSerializer
 
 
-    class AuthorizationTokenSerializer(QuerySetReadableMixin, serializers.Serializer):
+    class AuthorizationTokenSerializer(serializers.Serializer):
         account = serializers.HyperlinkedRelatedField(
             queryset=Account.objects.all(),
             required=True,
