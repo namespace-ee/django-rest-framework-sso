@@ -3,18 +3,9 @@ import os
 from setuptools import find_packages, setup
 
 
-def get_install_requires():
-    """
-    parse requirements.txt, ignore links, exclude comments
-    """
-    requirements = []
-    for line in open('requirements.txt').readlines():
-        # skip to next iteration if comment or empty line
-        if line.startswith('#') or line == '' or line.startswith('http') or line.startswith('git'):
-            continue
-        # add line to requirements
-        requirements.append(line)
-    return requirements
+INSTALL_REQUIRES = [
+    'PyJWT>=1.5.2,<2.0.0',
+]
 
 
 with open(os.path.join(os.path.dirname(__file__), 'README.rst')) as readme:
@@ -53,5 +44,5 @@ setup(
         'Topic :: Internet :: WWW/HTTP :: Session',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    install_requires=get_install_requires(),
+    install_requires=INSTALL_REQUIRES,
 )
