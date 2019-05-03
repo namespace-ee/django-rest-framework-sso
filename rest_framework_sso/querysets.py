@@ -4,6 +4,10 @@ from __future__ import absolute_import, unicode_literals
 from django.db.models import QuerySet, Q
 from django.utils import timezone
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class SessionTokenQuerySet(QuerySet):
     def active(self):

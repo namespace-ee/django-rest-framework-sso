@@ -8,6 +8,10 @@ from jwt.exceptions import InvalidKeyError
 
 from rest_framework_sso.settings import api_settings
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def read_key_file(file_name):
     if api_settings.KEY_STORE_ROOT:

@@ -11,6 +11,10 @@ from rest_framework_sso.models import SessionToken
 from rest_framework_sso.serializers import SessionTokenSerializer, AuthorizationTokenSerializer
 from rest_framework_sso.settings import api_settings
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 create_session_payload = api_settings.CREATE_SESSION_PAYLOAD
 create_authorization_payload = api_settings.CREATE_AUTHORIZATION_PAYLOAD
 encode_jwt_token = api_settings.ENCODE_JWT_TOKEN

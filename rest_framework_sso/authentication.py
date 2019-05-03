@@ -11,6 +11,10 @@ from rest_framework.authentication import (
 
 from rest_framework_sso.settings import api_settings
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 decode_jwt_token = api_settings.DECODE_JWT_TOKEN
 authenticate_payload = api_settings.AUTHENTICATE_PAYLOAD
 

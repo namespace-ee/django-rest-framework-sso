@@ -15,6 +15,10 @@ from rest_framework_sso import claims
 from rest_framework_sso.keys import get_private_key_and_key_id, get_public_key_and_key_id
 from rest_framework_sso.settings import api_settings
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def create_session_payload(session_token, user, **kwargs):
     return {

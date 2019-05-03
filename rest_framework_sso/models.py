@@ -15,6 +15,10 @@ from django.utils.translation import ugettext_lazy as _
 # See: https://github.com/tomchristie/django-rest-framework/issues/1297
 from rest_framework_sso.querysets import SessionTokenQuerySet
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 AUTH_USER_MODEL = getattr(settings, 'AUTH_USER_MODEL', 'auth.User')
 
 
