@@ -25,6 +25,7 @@ class BaseAPIView(APIView):
     """
     Base API View that various JWT interactions inherit from.
     """
+
     throttle_classes = ()
     permission_classes = ()
     serializer_class = None
@@ -33,10 +34,7 @@ class BaseAPIView(APIView):
         """
         Extra context provided to the serializer class.
         """
-        return {
-            'request': self.request,
-            'view': self,
-        }
+        return {"request": self.request, "view": self}
 
     def get_serializer_class(self):
         """
@@ -48,8 +46,8 @@ class BaseAPIView(APIView):
         """
         assert self.serializer_class is not None, (
             "'%s' should either include a `serializer_class` attribute, "
-            "or override the `get_serializer_class()` method."
-            % self.__class__.__name__)
+            "or override the `get_serializer_class()` method." % self.__class__.__name__
+        )
         return self.serializer_class
 
     def get_serializer(self, *args, **kwargs):
@@ -58,7 +56,7 @@ class BaseAPIView(APIView):
         deserializing input, and for serializing output.
         """
         serializer_class = self.get_serializer_class()
-        kwargs['context'] = self.get_serializer_context()
+        kwargs["context"] = self.get_serializer_context()
         return serializer_class(*args, **kwargs)
 
 
@@ -66,26 +64,27 @@ class ObtainSessionTokenView(BaseAPIView):
     """
     Returns a JSON Web Token that can be used for authenticated requests.
     """
+
     permission_classes = ()
     serializer_class = SessionTokenSerializer
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
-        session_token, created = SessionToken.objects.active().\
-            first_or_create(user=user, request_meta=request.META)
+        user = serializer.validated_data["user"]
+        session_token, created = SessionToken.objects.active().first_or_create(user=user, request_meta=request.META)
         session_token.update_attributes(request=request)
         session_token.save()
         payload = create_session_payload(session_token=session_token, user=user)
         jwt_token = encode_jwt_token(payload=payload)
-        return Response({'token': jwt_token})
+        return Response({"token": jwt_token})
 
 
 class ObtainAuthorizationTokenView(BaseAPIView):
     """
     Returns a JSON Web Token that can be used for authenticated requests.
     """
+
     permission_classes = (IsAuthenticated,)
     serializer_class = AuthorizationTokenSerializer
 
@@ -93,25 +92,25 @@ class ObtainAuthorizationTokenView(BaseAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        if hasattr(request.auth, 'get') and request.auth.get(claims.SESSION_ID):
+        if hasattr(request.auth, "get") and request.auth.get(claims.SESSION_ID):
             try:
-                session_token = SessionToken.objects.active().\
-                    get(pk=request.auth.get(claims.SESSION_ID), user=request.user)
+                session_token = SessionToken.objects.active().get(
+                    pk=request.auth.get(claims.SESSION_ID), user=request.user
+                )
             except SessionToken.DoesNotExist:
-                return Response({'detail': 'Invalid token.'}, status=status.HTTP_401_UNAUTHORIZED)
+                return Response({"detail": "Invalid token."}, status=status.HTTP_401_UNAUTHORIZED)
         else:
-            session_token, created = SessionToken.objects.active().\
-                first_or_create(user=request.user, request_meta=request.META)
+            session_token, created = SessionToken.objects.active().first_or_create(
+                user=request.user, request_meta=request.META
+            )
 
         session_token.update_attributes(request=request)
         session_token.save()
         payload = create_authorization_payload(
-            session_token=session_token,
-            user=request.user,
-            **serializer.validated_data
+            session_token=session_token, user=request.user, **serializer.validated_data
         )
         jwt_token = encode_jwt_token(payload=payload)
-        return Response({'token': jwt_token})
+        return Response({"token": jwt_token})
 
 
 obtain_session_token = ObtainSessionTokenView.as_view()

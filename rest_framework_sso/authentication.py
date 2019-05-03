@@ -5,9 +5,7 @@ import jwt.exceptions
 from django.utils.encoding import smart_text
 from django.utils.translation import ugettext as _
 from rest_framework import exceptions
-from rest_framework.authentication import (
-    BaseAuthentication, get_authorization_header
-)
+from rest_framework.authentication import BaseAuthentication, get_authorization_header
 
 from rest_framework_sso.settings import api_settings
 
@@ -37,28 +35,28 @@ class JWTAuthentication(BaseAuthentication):
             return None
 
         if len(auth) == 1:
-            msg = _('Invalid token header. No credentials provided.')
+            msg = _("Invalid token header. No credentials provided.")
             raise exceptions.AuthenticationFailed(msg)
         elif len(auth) > 2:
-            msg = _('Invalid token header. Token string should not contain spaces.')
+            msg = _("Invalid token header. Token string should not contain spaces.")
             raise exceptions.AuthenticationFailed(msg)
 
         try:
             token = auth[1].decode()
         except UnicodeError:
-            msg = _('Invalid token header. Token string should not contain invalid characters.')
+            msg = _("Invalid token header. Token string should not contain invalid characters.")
             raise exceptions.AuthenticationFailed(msg)
 
         try:
             payload = decode_jwt_token(token=token)
         except jwt.exceptions.ExpiredSignature:
-            msg = _('Signature has expired.')
+            msg = _("Signature has expired.")
             raise exceptions.AuthenticationFailed(msg)
         except jwt.exceptions.DecodeError:
-            msg = _('Error decoding signature.')
+            msg = _("Error decoding signature.")
             raise exceptions.AuthenticationFailed(msg)
         except jwt.exceptions.InvalidKeyError:
-            msg = _('Unauthorized token signing key.')
+            msg = _("Unauthorized token signing key.")
             raise exceptions.AuthenticationFailed(msg)
         except jwt.exceptions.InvalidTokenError:
             raise exceptions.AuthenticationFailed()

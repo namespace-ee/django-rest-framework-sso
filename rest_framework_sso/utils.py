@@ -41,41 +41,44 @@ def create_authorization_payload(session_token, user, **kwargs):
 
 def encode_jwt_token(payload):
     if payload.get(claims.TOKEN) not in (claims.TOKEN_SESSION, claims.TOKEN_AUTHORIZATION):
-        raise RuntimeError('Unknown token type')
+        raise RuntimeError("Unknown token type")
 
     if not payload.get(claims.ISSUER):
         if api_settings.IDENTITY is not None:
             payload[claims.ISSUER] = api_settings.IDENTITY
         else:
-            raise RuntimeError('IDENTITY must be specified in settings')
+            raise RuntimeError("IDENTITY must be specified in settings")
 
     if not payload.get(claims.AUDIENCE):
         if payload.get(claims.TOKEN) == claims.TOKEN_SESSION and api_settings.SESSION_AUDIENCE is not None:
             payload[claims.AUDIENCE] = api_settings.SESSION_AUDIENCE
-        elif payload.get(claims.TOKEN) == claims.TOKEN_AUTHORIZATION and api_settings.AUTHORIZATION_AUDIENCE is not None:
+        elif (
+            payload.get(claims.TOKEN) == claims.TOKEN_AUTHORIZATION and api_settings.AUTHORIZATION_AUDIENCE is not None
+        ):
             payload[claims.AUDIENCE] = api_settings.AUTHORIZATION_AUDIENCE
         elif api_settings.IDENTITY is not None:
             payload[claims.AUDIENCE] = [api_settings.IDENTITY]
         else:
-            raise RuntimeError('SESSION_AUDIENCE must be specified in settings')
+            raise RuntimeError("SESSION_AUDIENCE must be specified in settings")
 
     if not payload.get(claims.EXPIRATION_TIME):
         if payload.get(claims.TOKEN) == claims.TOKEN_SESSION and api_settings.SESSION_EXPIRATION is not None:
             payload[claims.EXPIRATION_TIME] = datetime.utcnow() + api_settings.SESSION_EXPIRATION
-        elif payload.get(claims.TOKEN) == claims.TOKEN_AUTHORIZATION and api_settings.AUTHORIZATION_EXPIRATION is not None:
+        elif (
+            payload.get(claims.TOKEN) == claims.TOKEN_AUTHORIZATION
+            and api_settings.AUTHORIZATION_EXPIRATION is not None
+        ):
             payload[claims.EXPIRATION_TIME] = datetime.utcnow() + api_settings.AUTHORIZATION_EXPIRATION
 
     if not payload.get(claims.ISSUED_AT):
         payload[claims.ISSUED_AT] = datetime.utcnow()
 
     if payload[claims.ISSUER] not in api_settings.PRIVATE_KEYS:
-        raise RuntimeError('Private key for specified issuer was not found in settings')
+        raise RuntimeError("Private key for specified issuer was not found in settings")
 
     private_key, key_id = get_private_key_and_key_id(issuer=payload[claims.ISSUER])
 
-    headers = {
-        claims.KEY_ID: key_id,
-    }
+    headers = {claims.KEY_ID: key_id}
 
     return jwt.encode(
         payload=payload,
@@ -83,7 +86,7 @@ def encode_jwt_token(payload):
         algorithm=api_settings.ENCODE_ALGORITHM,
         headers=headers,
         json_encoder=DjangoJSONEncoder,
-    ).decode('utf-8')
+    ).decode("utf-8")
 
 
 def decode_jwt_token(token):
@@ -101,15 +104,11 @@ def decode_jwt_token(token):
     unverified_issuer = six.text_type(unverified_claims[claims.ISSUER])
 
     if api_settings.ACCEPTED_ISSUERS is not None and unverified_issuer not in api_settings.ACCEPTED_ISSUERS:
-        raise InvalidIssuerError('Invalid issuer')
+        raise InvalidIssuerError("Invalid issuer")
 
     public_key, key_id = get_public_key_and_key_id(issuer=unverified_issuer, key_id=unverified_key_id)
 
-    options = {
-        'verify_exp': api_settings.VERIFY_EXPIRATION,
-        'verify_aud': True,
-        'verify_iss': True,
-    }
+    options = {"verify_exp": api_settings.VERIFY_EXPIRATION, "verify_aud": True, "verify_iss": True}
 
     payload = jwt.decode(
         jwt=token,
@@ -123,13 +122,13 @@ def decode_jwt_token(token):
     )
 
     if payload.get(claims.TOKEN) not in (claims.TOKEN_SESSION, claims.TOKEN_AUTHORIZATION):
-        raise InvalidTokenError('Unknown token type')
+        raise InvalidTokenError("Unknown token type")
     if payload.get(claims.ISSUER) != api_settings.IDENTITY and payload.get(claims.TOKEN) != claims.TOKEN_AUTHORIZATION:
-        raise InvalidTokenError('Only authorization tokens are accepted from other issuers')
+        raise InvalidTokenError("Only authorization tokens are accepted from other issuers")
     if not payload.get(claims.SESSION_ID):
-        raise MissingRequiredClaimError('Session ID is missing.')
+        raise MissingRequiredClaimError("Session ID is missing.")
     if not payload.get(claims.USER_ID):
-        raise MissingRequiredClaimError('User ID is missing.')
+        raise MissingRequiredClaimError("User ID is missing.")
 
     return payload
 
@@ -141,20 +140,21 @@ def authenticate_payload(payload):
 
     if api_settings.VERIFY_SESSION_TOKEN:
         try:
-            session_token = SessionToken.objects.\
-                active().\
-                select_related('user').\
-                get(pk=payload.get(claims.SESSION_ID), user_id=payload.get(claims.USER_ID))
+            session_token = (
+                SessionToken.objects.active()
+                .select_related("user")
+                .get(pk=payload.get(claims.SESSION_ID), user_id=payload.get(claims.USER_ID))
+            )
             user = session_token.user
         except SessionToken.DoesNotExist:
-            raise exceptions.AuthenticationFailed(_('Invalid token.'))
+            raise exceptions.AuthenticationFailed(_("Invalid token."))
     else:
         try:
             user = user_model.objects.get(pk=payload.get(claims.USER_ID))
         except user_model.DoesNotExist:
-            raise exceptions.AuthenticationFailed(_('Invalid token.'))
+            raise exceptions.AuthenticationFailed(_("Invalid token."))
 
     if not user.is_active:
-        raise exceptions.AuthenticationFailed(_('User inactive or deleted.'))
+        raise exceptions.AuthenticationFailed(_("User inactive or deleted."))
 
     return user

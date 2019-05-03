@@ -19,7 +19,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-AUTH_USER_MODEL = getattr(settings, 'AUTH_USER_MODEL', 'auth.User')
+AUTH_USER_MODEL = getattr(settings, "AUTH_USER_MODEL", "auth.User")
 
 
 @python_2_unicode_compatible
@@ -27,18 +27,9 @@ class SessionToken(models.Model):
     """
     The default session token model.
     """
-    id = models.UUIDField(
-        primary_key=True,
-        default=uuid.uuid4,
-        editable=False,
-        db_index=True,
-    )
-    user = models.ForeignKey(
-        to=AUTH_USER_MODEL,
-        related_name='+',
-        on_delete=models.CASCADE,
-        verbose_name=_("user"),
-    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, db_index=True)
+    user = models.ForeignKey(to=AUTH_USER_MODEL, related_name="+", on_delete=models.CASCADE, verbose_name=_("user"))
     ip_address = models.GenericIPAddressField(null=True, blank=True, db_index=True)
     user_agent = models.CharField(max_length=1000, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
@@ -52,7 +43,7 @@ class SessionToken(models.Model):
         #
         # Also see corresponding ticket:
         # https://github.com/tomchristie/django-rest-framework/issues/705
-        abstract = 'rest_framework_sso' not in settings.INSTALLED_APPS
+        abstract = "rest_framework_sso" not in settings.INSTALLED_APPS
         verbose_name = _("Session token")
         verbose_name_plural = _("Session tokens")
 
@@ -60,14 +51,14 @@ class SessionToken(models.Model):
         return six.text_type(self.id)
 
     def update_attributes(self, request):
-        if request.META.get('HTTP_X_FORWARDED_FOR'):
-            self.ip_address = request.META.get('HTTP_X_FORWARDED_FOR')
-        elif request.META.get('REMOTE_ADDR'):
-            self.ip_address = request.META.get('REMOTE_ADDR')
+        if request.META.get("HTTP_X_FORWARDED_FOR"):
+            self.ip_address = request.META.get("HTTP_X_FORWARDED_FOR")
+        elif request.META.get("REMOTE_ADDR"):
+            self.ip_address = request.META.get("REMOTE_ADDR")
         else:
             self.ip_address = None
 
-        if request.META.get('HTTP_USER_AGENT'):
-            self.user_agent = request.META.get('HTTP_USER_AGENT')[:1000]
+        if request.META.get("HTTP_USER_AGENT"):
+            self.user_agent = request.META.get("HTTP_USER_AGENT")[:1000]
         else:
-            self.user_agent = ''
+            self.user_agent = ""

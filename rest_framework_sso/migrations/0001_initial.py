@@ -12,25 +12,32 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-    ]
+    dependencies = [migrations.swappable_dependency(settings.AUTH_USER_MODEL)]
 
     operations = [
         migrations.CreateModel(
-            name='SessionToken',
+            name="SessionToken",
             fields=[
-                ('id', models.UUIDField(db_index=True, default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('ip_address', models.GenericIPAddressField(blank=True, db_index=True, null=True)),
-                ('user_agent', models.CharField(blank=True, max_length=1000)),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('revoked_at', models.DateTimeField(blank=True, db_index=True, null=True)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to=settings.AUTH_USER_MODEL, verbose_name='user')),
+                (
+                    "id",
+                    models.UUIDField(
+                        db_index=True, default=uuid.uuid4, editable=False, primary_key=True, serialize=False
+                    ),
+                ),
+                ("ip_address", models.GenericIPAddressField(blank=True, db_index=True, null=True)),
+                ("user_agent", models.CharField(blank=True, max_length=1000)),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                ("revoked_at", models.DateTimeField(blank=True, db_index=True, null=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="+",
+                        to=settings.AUTH_USER_MODEL,
+                        verbose_name="user",
+                    ),
+                ),
             ],
-            options={
-                'abstract': False,
-                'verbose_name': 'Session token',
-                'verbose_name_plural': 'Session tokens',
-            },
-        ),
+            options={"abstract": False, "verbose_name": "Session token", "verbose_name_plural": "Session tokens"},
+        )
     ]

@@ -19,8 +19,8 @@ class SessionTokenQuerySet(QuerySet):
         Returns a tuple of (object, created), where created is a boolean
         specifying whether an object was created.
         """
-        if request_meta and 'HTTP_USER_AGENT' in request_meta:
-            kwargs['user_agent__startswith'] = request_meta.get('HTTP_USER_AGENT')[:100]
+        if request_meta and "HTTP_USER_AGENT" in request_meta:
+            kwargs["user_agent__startswith"] = request_meta.get("HTTP_USER_AGENT")[:100]
 
         lookup, params = self._extract_model_params(defaults, **kwargs)
         # The get() needs to be targeted at the write database in order
