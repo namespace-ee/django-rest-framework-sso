@@ -133,7 +133,7 @@ API views/viewsets to handle permissions, for example::
         queryset = User.objects.none()
 
         def get_queryset(self):
-            if not request.user.is_authenticated() or not request.auth:
+            if not request.user.is_authenticated or not request.auth:
                 return self.none()
             return User.objects.filter(
                 service=request.auth.get(claims.ISSUER),
