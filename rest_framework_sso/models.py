@@ -52,9 +52,9 @@ class SessionToken(models.Model):
 
     def update_attributes(self, request):
         if request.META.get("HTTP_X_FORWARDED_FOR"):
-            self.ip_address = request.META.get("HTTP_X_FORWARDED_FOR")
+            self.ip_address = request.META.get("HTTP_X_FORWARDED_FOR").split(",")[0].strip()
         elif request.META.get("REMOTE_ADDR"):
-            self.ip_address = request.META.get("REMOTE_ADDR")
+            self.ip_address = request.META.get("REMOTE_ADDR").split(",")[0].strip()
         else:
             self.ip_address = None
 
