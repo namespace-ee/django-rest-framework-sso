@@ -22,13 +22,13 @@ class SessionTokenQuerySet(QuerySet):
         if request_meta and "HTTP_USER_AGENT" in request_meta:
             kwargs["user_agent__startswith"] = request_meta.get("HTTP_USER_AGENT")[:100]
 
-        lookup, params = self._extract_model_params(defaults, **kwargs)
+        params = self._extract_model_params(defaults, **kwargs)
         # The get() needs to be targeted at the write database in order
         # to avoid potential transaction consistency problems.
         self._for_write = True
 
-        obj = self.filter(**lookup).first()
+        obj = self.filter(**kwargs).first()
         if obj:
             return obj, False
         else:
-            return self._create_object_from_params(lookup, params)
+            return self._create_object_from_params(kwargs, params)
