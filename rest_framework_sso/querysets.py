@@ -13,7 +13,7 @@ class SessionTokenQuerySet(QuerySet):
     def active(self):
         return self.filter(Q(revoked_at__isnull=True) | Q(revoked_at__gt=timezone.now()))
 
-    def first_or_create(self, defaults=None, request_meta=None, **kwargs):
+    def first_or_create(self, request_meta=None, **kwargs):
         """
         Looks up an object with the given kwargs, creating one if necessary.
         Returns a tuple of (object, created), where created is a boolean
@@ -22,13 +22,10 @@ class SessionTokenQuerySet(QuerySet):
         if request_meta and "HTTP_USER_AGENT" in request_meta:
             kwargs["user_agent__startswith"] = request_meta.get("HTTP_USER_AGENT")[:100]
 
-        params = self._extract_model_params(defaults, **kwargs)
-        # The get() needs to be targeted at the write database in order
-        # to avoid potential transaction consistency problems.
-        self._for_write = True
-
         obj = self.filter(**kwargs).first()
-        if obj:
-            return obj, False
-        else:
-            return self._create_object_from_params(kwargs, params)
+        created = False
+        if not obj:
+            obj = self.create(**kwargs)
+            created = True
+
+        return obj, created
