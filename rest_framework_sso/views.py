@@ -72,7 +72,9 @@ class ObtainSessionTokenView(BaseAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
-        session_token, created = SessionToken.objects.active().first_or_create(user=user, request_meta=request.META)
+        session_token = SessionToken.objects.active().filter(user=user).with_user_agent(request=request).first()
+        if session_token is None:
+            session_token = SessionToken(user=user)
         session_token.update_attributes(request=request)
         session_token.save()
         payload = create_session_payload(session_token=session_token, user=user)
@@ -100,9 +102,11 @@ class ObtainAuthorizationTokenView(BaseAPIView):
             except SessionToken.DoesNotExist:
                 return Response({"detail": "Invalid token."}, status=status.HTTP_401_UNAUTHORIZED)
         else:
-            session_token, created = SessionToken.objects.active().first_or_create(
-                user=request.user, request_meta=request.META
+            session_token = (
+                SessionToken.objects.active().filter(user=request.user).with_user_agent(request=request).first()
             )
+            if session_token is None:
+                session_token = SessionToken(user=request.user)
 
         session_token.update_attributes(request=request)
         session_token.save()
