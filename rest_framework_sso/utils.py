@@ -6,7 +6,7 @@ from datetime import datetime
 import jwt
 from django.contrib.auth import get_user_model
 from django.core.serializers.json import DjangoJSONEncoder
-from django.utils import six
+from django.utils import six, timezone
 from django.utils.translation import gettext_lazy as _
 from jwt.exceptions import MissingRequiredClaimError, InvalidIssuerError, InvalidTokenError
 from rest_framework import exceptions
@@ -147,7 +147,8 @@ def authenticate_payload(payload, request=None):
             )
             if request is not None:
                 session_token.update_attributes(request=request)
-                session_token.save()
+            session_token.last_used_at = timezone.now()
+            session_token.save()
             user = session_token.user
         except SessionToken.DoesNotExist:
             raise exceptions.AuthenticationFailed(_("Invalid token."))
