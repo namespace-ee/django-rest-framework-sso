@@ -133,7 +133,7 @@ def decode_jwt_token(token):
     return payload
 
 
-def authenticate_payload(payload):
+def authenticate_payload(payload, request=None):
     from rest_framework_sso.models import SessionToken
 
     user_model = get_user_model()
@@ -145,6 +145,9 @@ def authenticate_payload(payload):
                 .select_related("user")
                 .get(pk=payload.get(claims.SESSION_ID), user_id=payload.get(claims.USER_ID))
             )
+            if request is not None:
+                session_token.update_attributes(request=request)
+                session_token.save()
             user = session_token.user
         except SessionToken.DoesNotExist:
             raise exceptions.AuthenticationFailed(_("Invalid token."))

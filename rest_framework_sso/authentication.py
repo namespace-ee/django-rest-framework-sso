@@ -61,10 +61,10 @@ class JWTAuthentication(BaseAuthentication):
         except jwt.exceptions.InvalidTokenError:
             raise exceptions.AuthenticationFailed()
 
-        return self.authenticate_credentials(payload=payload)
+        return self.authenticate_credentials(payload=payload, request=request)
 
-    def authenticate_credentials(self, payload):
-        user = authenticate_payload(payload=payload)
+    def authenticate_credentials(self, payload, request=None):
+        user = authenticate_payload(payload=payload, request=request)
         return user, payload
 
     def authenticate_header(self, request):
