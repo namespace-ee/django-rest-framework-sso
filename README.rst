@@ -183,6 +183,8 @@ Full list of settings parameters with their defaults::
         'DECODE_ALGORITHMS': None,
         'VERIFY_SIGNATURE': True,
         'VERIFY_EXPIRATION': True,
+        'VERIFY_ISSUER': True,
+        'VERIFY_AUDIENCE': True,
         'VERIFY_SESSION_TOKEN': True,
         'EXPIRATION_LEEWAY': 0,
         'SESSION_EXPIRATION': None,

@@ -108,7 +108,11 @@ def decode_jwt_token(token):
 
     public_key, key_id = get_public_key_and_key_id(issuer=unverified_issuer, key_id=unverified_key_id)
 
-    options = {"verify_exp": api_settings.VERIFY_EXPIRATION, "verify_aud": True, "verify_iss": True}
+    options = {
+        "verify_exp": api_settings.VERIFY_EXPIRATION,
+        "verify_iss": api_settings.VERIFY_ISSUER,
+        "verify_aud": api_settings.VERIFY_AUDIENCE,
+    }
 
     payload = jwt.decode(
         jwt=token,
