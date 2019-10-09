@@ -127,8 +127,6 @@ def decode_jwt_token(token):
 
     if payload.get(claims.TOKEN) not in (claims.TOKEN_SESSION, claims.TOKEN_AUTHORIZATION):
         raise InvalidTokenError("Unknown token type")
-    if payload.get(claims.ISSUER) != api_settings.IDENTITY and payload.get(claims.TOKEN) != claims.TOKEN_AUTHORIZATION:
-        raise InvalidTokenError("Only authorization tokens are accepted from other issuers")
     if not payload.get(claims.SESSION_ID):
         raise MissingRequiredClaimError("Session ID is missing.")
     if not payload.get(claims.USER_ID):
