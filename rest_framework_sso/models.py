@@ -2,10 +2,10 @@
 from __future__ import absolute_import, unicode_literals
 
 import uuid
+import six
 
 from django.conf import settings
 from django.db import models
-from django.utils import six
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 
