@@ -1,9 +1,9 @@
 # coding: utf-8
 from __future__ import absolute_import, unicode_literals
+import six
 
 from cryptography.hazmat.backends.openssl.rsa import _RSAPrivateKey, _RSAPublicKey
 from django.test import TestCase
-from django.utils import six
 from jwt.exceptions import InvalidKeyError
 
 from rest_framework_sso import keys

@@ -1,9 +1,9 @@
 # coding: utf-8
 import os
+import six
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import load_pem_private_key, load_pem_public_key
-from django.utils import six
 from jwt.exceptions import InvalidKeyError
 
 from rest_framework_sso.settings import api_settings

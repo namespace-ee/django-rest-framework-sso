@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-DJANGO_SETTINGS_MODULE='tests.settings' py.test tests
+DJANGO_SETTINGS_MODULE='tests.settings' pytest tests

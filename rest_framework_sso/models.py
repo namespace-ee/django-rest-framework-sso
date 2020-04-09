@@ -2,11 +2,16 @@
 from __future__ import absolute_import, unicode_literals
 
 import uuid
+import six
 
 from django.conf import settings
 from django.db import models
-from django.utils import six
-from django.utils.encoding import python_2_unicode_compatible
+
+try:
+    from django.utils.encoding import python_2_unicode_compatible as smart_text
+except ImportError:
+    from django.utils.encoding import smart_text
+
 from django.utils.translation import ugettext_lazy as _
 
 # Prior to Django 1.5, the AUTH_USER_MODEL setting does not exist.
@@ -22,7 +27,7 @@ logger = logging.getLogger(__name__)
 AUTH_USER_MODEL = getattr(settings, "AUTH_USER_MODEL", "auth.User")
 
 
-@python_2_unicode_compatible
+@smart_text
 class SessionToken(models.Model):
     """
     The default session token model.
