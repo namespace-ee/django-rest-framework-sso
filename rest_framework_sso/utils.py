@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import absolute_import, unicode_literals
 
-import six
 import jwt
 
 from datetime import datetime
@@ -96,14 +95,14 @@ def decode_jwt_token(token):
     unverified_claims = jwt.decode(token, verify=False)
 
     if unverified_header.get(claims.KEY_ID):
-        unverified_key_id = six.text_type(unverified_header.get(claims.KEY_ID))
+        unverified_key_id = str(unverified_header.get(claims.KEY_ID))
     else:
         unverified_key_id = None
 
     if claims.ISSUER not in unverified_claims:
         raise MissingRequiredClaimError(claims.ISSUER)
 
-    unverified_issuer = six.text_type(unverified_claims[claims.ISSUER])
+    unverified_issuer = str(unverified_claims[claims.ISSUER])
 
     if api_settings.ACCEPTED_ISSUERS is not None and unverified_issuer not in api_settings.ACCEPTED_ISSUERS:
         raise InvalidIssuerError("Invalid issuer")

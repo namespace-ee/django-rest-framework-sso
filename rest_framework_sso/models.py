@@ -2,15 +2,9 @@
 from __future__ import absolute_import, unicode_literals
 
 import uuid
-import six
 
 from django.conf import settings
 from django.db import models
-
-try:
-    from django.utils.encoding import python_2_unicode_compatible as smart_text
-except ImportError:
-    from django.utils.encoding import smart_text
 
 from django.utils.translation import ugettext_lazy as _
 
@@ -27,7 +21,6 @@ logger = logging.getLogger(__name__)
 AUTH_USER_MODEL = getattr(settings, "AUTH_USER_MODEL", "auth.User")
 
 
-@smart_text
 class SessionToken(models.Model):
     """
     The default session token model.
@@ -54,7 +47,7 @@ class SessionToken(models.Model):
         verbose_name_plural = _("Session tokens")
 
     def __str__(self):
-        return six.text_type(self.id)
+        return str(self.id)
 
     def update_attributes(self, request):
         if request.META.get("HTTP_X_FORWARDED_FOR"):

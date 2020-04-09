@@ -1,6 +1,5 @@
 # coding: utf-8
 import os
-import six
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import load_pem_private_key, load_pem_public_key
@@ -34,7 +33,7 @@ def get_key_file_name(keys, issuer, key_id=None):
     if not keys.get(issuer):
         raise InvalidKeyError("No keys defined for the given issuer")
     issuer_keys = keys.get(issuer)
-    if isinstance(issuer_keys, (str, six.text_type)):
+    if isinstance(issuer_keys, str):
         issuer_keys = [issuer_keys]
     if key_id:
         issuer_keys = [ik for ik in issuer_keys if key_id in (ik, get_key_id(ik))]
