@@ -2,7 +2,7 @@
 from __future__ import absolute_import, unicode_literals
 
 from django.contrib.auth import authenticate
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from rest_framework_sso.settings import api_settings

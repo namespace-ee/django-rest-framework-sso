@@ -6,7 +6,7 @@ import uuid
 from django.conf import settings
 from django.db import models
 
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 # Prior to Django 1.5, the AUTH_USER_MODEL setting does not exist.
 # Note that we don't perform this code in the compat module due to
