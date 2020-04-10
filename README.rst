@@ -150,11 +150,12 @@ Example settings for project that both issues and validates tokens for `myapp` a
         'SESSION_AUDIENCE': ['myapp'],
         'AUTHORIZATION_AUDIENCE': ['myapp', 'otherapp'],
         'ACCEPTED_ISSUERS': ['myapp'],
+        'KEY_STORE_ROOT': '/srv/myapp/keys',
         'PUBLIC_KEYS': {
-            'myapp': 'keys/myapp-20180101.pem',  # both private/public key in same file
+            'myapp': ['myapp-20200410.pem', 'myapp-20180101.pem'],  # both private/public key in the same file
         },
         'PRIVATE_KEYS': {
-            'myapp': 'keys/myapp-20180101.pem',  # both private/public key in same file
+            'myapp': ['myapp-20200410.pem', 'myapp-20180101.pem'],  # both private/public key in the same file
         },
     }
     
@@ -165,8 +166,9 @@ Example settings for project that only accepts tokens signed by `myapp` public k
         'VERIFY_SESSION_TOKEN': False,
         'IDENTITY': 'otherapp',
         'ACCEPTED_ISSUERS': ['myapp'],
+        'KEY_STORE_ROOT': '/srv/otherapp/keys',
         'PUBLIC_KEYS': {
-            'myapp': 'keys/myapp-20180101.pem',  # only public key in this file
+            'myapp': ['myapp-20200410.pem', 'myapp-20180101.pem'],  # only public keys in these files
         },
     }
 
