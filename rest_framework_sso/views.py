@@ -72,9 +72,15 @@ class ObtainSessionTokenView(BaseAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
-        session_token = SessionToken.objects.active().filter(user=user).with_user_agent(request=request).first()
+        client_id = serializer.validated_data["client_id"]
+        session_token = (
+            SessionToken.objects.active()
+            .filter(user=user, client_id=client_id)
+            .with_user_agent(request=request)
+            .first()
+        )
         if session_token is None:
-            session_token = SessionToken(user=user)
+            session_token = SessionToken(user=user, client_id=client_id)
         session_token.update_attributes(request=request)
         session_token.save()
         payload = create_session_payload(session_token=session_token, user=user)

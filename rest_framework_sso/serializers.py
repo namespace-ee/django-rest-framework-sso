@@ -18,6 +18,7 @@ encode_jwt_token = api_settings.ENCODE_JWT_TOKEN
 class SessionTokenSerializer(serializers.Serializer):
     username = serializers.CharField(label=_("Username"))
     password = serializers.CharField(label=_("Password"), style={"input_type": "password"})
+    client_id = serializers.CharField(label=_("Client ID"), allow_blank=True, required=False, default="")
 
     def validate(self, attrs):
         username = attrs.get("username")

@@ -28,6 +28,7 @@ class SessionToken(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, db_index=True)
     user = models.ForeignKey(to=AUTH_USER_MODEL, related_name="+", on_delete=models.CASCADE, verbose_name=_("user"))
+    client_id = models.CharField(max_length=1000, blank=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True, db_index=True)
     user_agent = models.CharField(max_length=1000, blank=True)
     last_used_at = models.DateTimeField(null=True, blank=True, db_index=True)
