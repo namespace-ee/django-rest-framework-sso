@@ -80,7 +80,7 @@ class ObtainSessionTokenView(BaseAPIView):
             .first()
         )
         if session_token is None:
-            session_token = SessionToken(user=user, client_id=client_id)
+            session_token = SessionToken(user=user, client_id=client_id, created_by=user)
         session_token.update_attributes(request=request)
         session_token.save()
         payload = create_session_payload(session_token=session_token, user=user)
@@ -112,7 +112,7 @@ class ObtainAuthorizationTokenView(BaseAPIView):
                 SessionToken.objects.active().filter(user=request.user).with_user_agent(request=request).first()
             )
             if session_token is None:
-                session_token = SessionToken(user=request.user)
+                session_token = SessionToken(user=request.user, created_by=request.user)
 
         session_token.update_attributes(request=request)
         session_token.save()
