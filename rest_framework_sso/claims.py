@@ -15,6 +15,7 @@ JWT_ID = "jti"
 
 TOKEN = "token"
 SESSION_ID = "sid"
+CLIENT_ID = "cid"
 USER_ID = "uid"
 EMAIL = "email"
 SCOPES = "scopes"

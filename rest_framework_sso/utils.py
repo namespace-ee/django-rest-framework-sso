@@ -25,6 +25,7 @@ def create_session_payload(session_token, user, **kwargs):
     return {
         claims.TOKEN: claims.TOKEN_SESSION,
         claims.SESSION_ID: session_token.pk,
+        claims.CLIENT_ID: session_token.client_id,
         claims.USER_ID: user.pk,
         claims.EMAIL: user.email,
     }
@@ -34,6 +35,7 @@ def create_authorization_payload(session_token, user, **kwargs):
     return {
         claims.TOKEN: claims.TOKEN_AUTHORIZATION,
         claims.SESSION_ID: session_token.pk,
+        claims.CLIENT_ID: session_token.client_id,
         claims.USER_ID: user.pk,
         claims.EMAIL: user.email,
         claims.SCOPES: [],
