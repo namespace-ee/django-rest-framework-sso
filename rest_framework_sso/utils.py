@@ -87,7 +87,7 @@ def encode_jwt_token(payload):
         algorithm=api_settings.ENCODE_ALGORITHM,
         headers=headers,
         json_encoder=DjangoJSONEncoder,
-    ).decode("utf-8")
+    )
 
 
 def decode_jwt_token(token):
