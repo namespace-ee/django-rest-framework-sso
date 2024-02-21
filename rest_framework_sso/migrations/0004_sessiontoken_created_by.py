@@ -9,14 +9,21 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('rest_framework_sso', '0003_sessiontoken_client_id'),
+        ("rest_framework_sso", "0003_sessiontoken_client_id"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='sessiontoken',
-            name='created_by',
-            field=models.ForeignKey(null=True, blank=True, on_delete=django.db.models.deletion.CASCADE, related_name='+', to=settings.AUTH_USER_MODEL, verbose_name='created by'),
+            model_name="sessiontoken",
+            name="created_by",
+            field=models.ForeignKey(
+                null=True,
+                blank=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="+",
+                to=settings.AUTH_USER_MODEL,
+                verbose_name="created by",
+            ),
         ),
         migrations.RunSQL("UPDATE rest_framework_sso_sessiontoken SET created_by_id = user_id"),
     ]

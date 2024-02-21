@@ -32,7 +32,14 @@ class SessionToken(models.Model):
     ip_address = models.GenericIPAddressField(null=True, blank=True, db_index=True)
     user_agent = models.CharField(max_length=1000, blank=True)
     last_used_at = models.DateTimeField(null=True, blank=True, db_index=True)
-    created_by = models.ForeignKey(to=AUTH_USER_MODEL, null=True, blank=True, related_name="+", on_delete=models.CASCADE, verbose_name=_("created by"))
+    created_by = models.ForeignKey(
+        to=AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        related_name="+",
+        on_delete=models.CASCADE,
+        verbose_name=_("created by"),
+    )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     revoked_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
