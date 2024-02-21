@@ -31,6 +31,7 @@ class SessionToken(models.Model):
     client_id = models.CharField(max_length=1000, blank=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True, db_index=True)
     user_agent = models.CharField(max_length=1000, blank=True)
+    version = models.CharField(max_length=100, blank=True, null=True)
     last_used_at = models.DateTimeField(null=True, blank=True, db_index=True)
     created_by = models.ForeignKey(
         to=AUTH_USER_MODEL,
@@ -70,3 +71,5 @@ class SessionToken(models.Model):
             self.user_agent = request.META.get("HTTP_USER_AGENT")[:1000]
         else:
             self.user_agent = ""
+
+        self.version = getattr(request, "version", None)
