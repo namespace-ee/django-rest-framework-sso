@@ -3,7 +3,7 @@ import os
 from setuptools import find_packages, setup
 
 
-INSTALL_REQUIRES = ["PyJWT>=1.5.2,<2.0.0"]
+INSTALL_REQUIRES = ["djangorestframework", "cryptography", "pem", "PyJWT"]
 
 
 with open(os.path.join(os.path.dirname(__file__), "README.rst")) as readme:
@@ -32,12 +32,9 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2",
-        "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.4",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Internet :: WWW/HTTP",
         "Topic :: Internet :: WWW/HTTP :: Session",
         "Topic :: Software Development :: Libraries :: Python Modules",

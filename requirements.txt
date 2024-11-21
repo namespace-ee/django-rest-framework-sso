@@ -1,4 +1,6 @@
-Django>=1.8
-djangorestframework>=3.2,<4.0
+cryptography
+Django
+djangorestframework
+pem
 PyJWT
-cryptography>=2.1.0,<4.0
+setuptools
