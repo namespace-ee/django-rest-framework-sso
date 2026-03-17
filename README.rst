@@ -31,8 +31,8 @@ Quick start
 
     urlpatterns = [
         ...
-        url(r'^session/', obtain_session_token),
-        url(r'^authorize/', obtain_authorization_token),
+        path('session/', obtain_session_token),
+        path('authorize/', obtain_authorization_token),
     ]
 
 Additional data in authorization tokens
@@ -61,7 +61,7 @@ the ObtainAuthorizationTokenView and AuthorizationTokenSerializer::
 Replace the authorization token view in your URL conf::
 
     urlpatterns = [
-        url(r'^authorize/$', ObtainAuthorizationTokenView.as_view()),
+        path('authorize/', ObtainAuthorizationTokenView.as_view()),
         ...
     ]
 
@@ -78,7 +78,7 @@ Add the `account` keyword argument to the `create_authorization_payload` functio
             'account': account.pk,
         }
 
-You will need to activete this function in the settings::
+You will need to activate this function in the settings::
 
     REST_FRAMEWORK_SSO = {
         'CREATE_AUTHORIZATION_PAYLOAD': 'myapp.authentication.create_authorization_payload',

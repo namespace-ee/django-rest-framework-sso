@@ -1,7 +1,6 @@
 import logging
 
 import jwt.exceptions
-from django.utils.encoding import smart_str
 from django.utils.translation import gettext_lazy as _
 from rest_framework import exceptions
 from rest_framework.authentication import BaseAuthentication, get_authorization_header
@@ -28,7 +27,7 @@ class JWTAuthentication(BaseAuthentication):
         auth = get_authorization_header(request).split()
         authenticate_header = self.authenticate_header(request=request)
 
-        if not auth or smart_str(auth[0].lower()) != authenticate_header.lower():
+        if not auth or auth[0].lower() != authenticate_header.lower().encode():
             return None
 
         if len(auth) == 1:

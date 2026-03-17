@@ -4,6 +4,10 @@
 
 Single sign-on extension for Django REST Framework. Uses JWT tokens (PyJWT) with RSA key pairs for session and authorization tokens.
 
+## Tooling
+
+Uses **uv** for dependency management, virtual environments, and running all commands. No pip, setuptools, or other package managers.
+
 ## Commands
 
 ```bash
