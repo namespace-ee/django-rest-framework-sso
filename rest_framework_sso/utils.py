@@ -1,9 +1,6 @@
-# coding: utf-8
-from __future__ import absolute_import, unicode_literals
-
 import jwt
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from django.contrib.auth import get_user_model
 from django.core.serializers.json import DjangoJSONEncoder
@@ -66,15 +63,15 @@ def encode_jwt_token(payload):
 
     if not payload.get(claims.EXPIRATION_TIME):
         if payload.get(claims.TOKEN) == claims.TOKEN_SESSION and api_settings.SESSION_EXPIRATION is not None:
-            payload[claims.EXPIRATION_TIME] = datetime.now(tz=timezone.utc) + api_settings.SESSION_EXPIRATION
+            payload[claims.EXPIRATION_TIME] = datetime.now(tz=UTC) + api_settings.SESSION_EXPIRATION
         elif (
             payload.get(claims.TOKEN) == claims.TOKEN_AUTHORIZATION
             and api_settings.AUTHORIZATION_EXPIRATION is not None
         ):
-            payload[claims.EXPIRATION_TIME] = datetime.now(tz=timezone.utc) + api_settings.AUTHORIZATION_EXPIRATION
+            payload[claims.EXPIRATION_TIME] = datetime.now(tz=UTC) + api_settings.AUTHORIZATION_EXPIRATION
 
     if not payload.get(claims.ISSUED_AT):
-        payload[claims.ISSUED_AT] = datetime.now(tz=timezone.utc)
+        payload[claims.ISSUED_AT] = datetime.now(tz=UTC)
 
     if payload[claims.ISSUER] not in api_settings.PRIVATE_KEYS:
         raise RuntimeError("Private key for specified issuer was not found in settings")

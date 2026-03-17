@@ -1,6 +1,3 @@
-# coding: utf-8
-from __future__ import absolute_import, unicode_literals
-
 import jwt.exceptions
 from django.utils.encoding import smart_str
 from django.utils.translation import gettext_lazy as _
