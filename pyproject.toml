@@ -36,6 +36,7 @@ Homepage = "https://github.com/namespace-ee/django-rest-framework-sso"
 
 [dependency-groups]
 dev = [
+    "bump-my-version",
     "pytest",
     "pytest-django",
 ]
