@@ -2,7 +2,6 @@ import logging
 import os
 
 import pem
-from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import load_pem_private_key, load_pem_public_key
 from jwt.exceptions import InvalidKeyError
 
@@ -47,7 +46,7 @@ def get_private_key_and_key_id(issuer, key_id=None):
         key_data = next(o.as_bytes() for o in file_data if isinstance(o, pem.PrivateKey))
     except StopIteration:
         raise InvalidKeyError(f"No private key found for {issuer=} {key_id=}")
-    key = load_pem_private_key(key_data, password=None, backend=default_backend())
+    key = load_pem_private_key(key_data, password=None)
     return key, get_key_id(file_name=file_name)
 
 
@@ -58,5 +57,5 @@ def get_public_key_and_key_id(issuer, key_id=None):
         key_data = next(o.as_bytes() for o in file_data if isinstance(o, pem.PublicKey))
     except StopIteration:
         raise InvalidKeyError(f"No public key found for {issuer=} {key_id=}")
-    key = load_pem_public_key(key_data, backend=default_backend())
+    key = load_pem_public_key(key_data)
     return key, get_key_id(file_name=file_name)

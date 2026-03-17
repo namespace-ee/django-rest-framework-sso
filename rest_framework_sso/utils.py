@@ -92,7 +92,6 @@ def decode_jwt_token(token):
     unverified_claims = jwt.decode(
         token,
         algorithms=api_settings.DECODE_ALGORITHMS or [api_settings.ENCODE_ALGORITHM],
-        verify=False,
         options={"verify_signature": False},
     )
 
@@ -112,6 +111,7 @@ def decode_jwt_token(token):
     public_key, key_id = get_public_key_and_key_id(issuer=unverified_issuer, key_id=unverified_key_id)
 
     options = {
+        "verify_signature": api_settings.VERIFY_SIGNATURE,
         "verify_exp": api_settings.VERIFY_EXPIRATION,
         "verify_iss": api_settings.VERIFY_ISSUER,
         "verify_aud": api_settings.VERIFY_AUDIENCE,
@@ -120,7 +120,6 @@ def decode_jwt_token(token):
     payload = jwt.decode(
         jwt=token,
         key=public_key,
-        verify=api_settings.VERIFY_SIGNATURE,
         algorithms=api_settings.DECODE_ALGORITHMS or [api_settings.ENCODE_ALGORITHM],
         options=options,
         leeway=api_settings.EXPIRATION_LEEWAY,
