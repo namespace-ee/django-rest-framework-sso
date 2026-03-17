@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test (Python ${{ matrix.python-version }}, Django ${{ matrix.django-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Django 4.2 - Python 3.10, 3.12
+          - python-version: "3.10"
+            django-version: "4.2"
+          - python-version: "3.12"
+            django-version: "4.2"
+          # Django 5.2 - Python 3.10, 3.12, 3.13, 3.14
+          - python-version: "3.10"
+            django-version: "5.2"
+          - python-version: "3.12"
+            django-version: "5.2"
+          - python-version: "3.13"
+            django-version: "5.2"
+          - python-version: "3.14"
+            django-version: "5.2"
+          # Django 6.0 - Python 3.12, 3.13, 3.14
+          - python-version: "3.12"
+            django-version: "6.0"
+          - python-version: "3.13"
+            django-version: "6.0"
+          - python-version: "3.14"
+            django-version: "6.0"
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Test
+        run: uv run --python ${{ matrix.python-version }} --with 'Django>=${{ matrix.django-version }},<${{ matrix.django-version }}.99' pytest tests/ -v
+
+  build:
+    name: Build package
+    needs: [test]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Build
+        run: uv build
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: dist
+          path: dist/*
+
+  publish:
+    name: Publish to PyPI
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
+    environment:
+      name: pypi
+      url: https://pypi.org/p/djangorestframework-sso
+    permissions:
+      id-token: write
+
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
