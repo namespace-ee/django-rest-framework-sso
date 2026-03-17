@@ -4,7 +4,6 @@ from django.conf import settings
 from django.test.signals import setting_changed
 from rest_framework.settings import APISettings
 
-
 USER_SETTINGS = getattr(settings, "REST_FRAMEWORK_SSO", None)
 
 DEFAULTS = {

@@ -39,6 +39,7 @@ dev = [
     "bump-my-version",
     "pytest",
     "pytest-django",
+    "ruff",
 ]
 
 [build-system]
@@ -61,18 +62,12 @@ replace = 'version = "{new_version}"'
 [[tool.bumpversion.files]]
 filename = "rest_framework_sso/__init__.py"
 
-[tool.black]
+[tool.ruff]
 line-length = 120
-target-version = ["py312"]
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.git
-  | \.venv
-  | build
-  | dist
-)/
-'''
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "tests.settings"

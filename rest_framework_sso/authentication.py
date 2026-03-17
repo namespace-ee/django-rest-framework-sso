@@ -1,3 +1,5 @@
+import logging
+
 import jwt.exceptions
 from django.utils.encoding import smart_str
 from django.utils.translation import gettext_lazy as _
@@ -5,8 +7,6 @@ from rest_framework import exceptions
 from rest_framework.authentication import BaseAuthentication, get_authorization_header
 
 from rest_framework_sso.settings import api_settings
-
-import logging
 
 logger = logging.getLogger(__name__)
 

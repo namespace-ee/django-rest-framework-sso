@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("rest_framework_sso", "0004_sessiontoken_created_by"),
     ]

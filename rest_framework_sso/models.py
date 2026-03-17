@@ -1,8 +1,8 @@
+import logging
 import uuid
 
 from django.conf import settings
 from django.db import models
-
 from django.utils.translation import gettext_lazy as _
 
 # Prior to Django 1.5, the AUTH_USER_MODEL setting does not exist.
@@ -10,8 +10,6 @@ from django.utils.translation import gettext_lazy as _
 # bug report #1297
 # See: https://github.com/tomchristie/django-rest-framework/issues/1297
 from rest_framework_sso.querysets import SessionTokenQuerySet
-
-import logging
 
 logger = logging.getLogger(__name__)
 

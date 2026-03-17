@@ -1,10 +1,10 @@
+import logging
+
 from django.contrib.auth import authenticate
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from rest_framework_sso.settings import api_settings
-
-import logging
 
 logger = logging.getLogger(__name__)
 

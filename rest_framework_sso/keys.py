@@ -1,3 +1,4 @@
+import logging
 import os
 
 import pem
@@ -6,8 +7,6 @@ from cryptography.hazmat.primitives.serialization import load_pem_private_key, l
 from jwt.exceptions import InvalidKeyError
 
 from rest_framework_sso.settings import api_settings
-
-import logging
 
 logger = logging.getLogger(__name__)
 

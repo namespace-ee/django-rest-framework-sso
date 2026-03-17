@@ -1,7 +1,7 @@
-from django.db.models import QuerySet, Q
-from django.utils import timezone
-
 import logging
+
+from django.db.models import Q, QuerySet
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 

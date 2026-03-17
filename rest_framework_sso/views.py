@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -5,10 +7,8 @@ from rest_framework.views import APIView
 
 from rest_framework_sso import claims
 from rest_framework_sso.models import SessionToken
-from rest_framework_sso.serializers import SessionTokenSerializer, AuthorizationTokenSerializer
+from rest_framework_sso.serializers import AuthorizationTokenSerializer, SessionTokenSerializer
 from rest_framework_sso.settings import api_settings
-
-import logging
 
 logger = logging.getLogger(__name__)
 
