@@ -1,7 +1,8 @@
 # coding: utf-8
 from __future__ import absolute_import, unicode_literals
 
-from cryptography.hazmat.backends.openssl.rsa import _RSAPrivateKey, _RSAPublicKey
+import pem
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from django.test import TestCase
 from jwt.exceptions import InvalidKeyError
 
@@ -10,13 +11,11 @@ from rest_framework_sso import keys
 
 class TestReadKeyFile(TestCase):
     def test_read(self):
-        key_data = keys.read_key_file("test-2048.pem")
-        self.assertIsInstance(key_data, bytes)
-        key_data_lines = key_data.decode("utf-8").split("\n")
-        self.assertIn("-----BEGIN PRIVATE KEY-----", key_data_lines)
-        self.assertIn("-----END PRIVATE KEY-----", key_data_lines)
-        self.assertIn("-----BEGIN PUBLIC KEY-----", key_data_lines)
-        self.assertIn("-----END PUBLIC KEY-----", key_data_lines)
+        pem_objects = keys.read_key_file("test-2048.pem")
+        self.assertIsInstance(pem_objects, list)
+        pem_types = {type(obj) for obj in pem_objects}
+        self.assertIn(pem.PrivateKey, pem_types)
+        self.assertIn(pem.PublicKey, pem_types)
 
 
 class TestGetKeyId(TestCase):
@@ -108,12 +107,12 @@ class TestGetPrivateKeyAndKeyId(TestCase):
 
     def test_first_key(self):
         private_key, key_id = keys.get_private_key_and_key_id(issuer="test-issuer")
-        self.assertIsInstance(private_key, _RSAPrivateKey)
+        self.assertIsInstance(private_key, RSAPrivateKey)
         self.assertEqual(key_id, "test-2048")
 
     def test_second_key(self):
         private_key, key_id = keys.get_private_key_and_key_id(issuer="test-issuer", key_id="test-1024")
-        self.assertIsInstance(private_key, _RSAPrivateKey)
+        self.assertIsInstance(private_key, RSAPrivateKey)
         self.assertEqual(key_id, "test-1024")
 
 
@@ -124,10 +123,10 @@ class TestGetPublicKeyAndKeyId(TestCase):
 
     def test_first_key(self):
         public_key, key_id = keys.get_public_key_and_key_id(issuer="test-issuer")
-        self.assertIsInstance(public_key, _RSAPublicKey)
+        self.assertIsInstance(public_key, RSAPublicKey)
         self.assertEqual(key_id, "test-2048")
 
     def test_second_key(self):
         public_key, key_id = keys.get_public_key_and_key_id(issuer="test-issuer", key_id="test-1024")
-        self.assertIsInstance(public_key, _RSAPublicKey)
+        self.assertIsInstance(public_key, RSAPublicKey)
         self.assertEqual(key_id, "test-1024")
