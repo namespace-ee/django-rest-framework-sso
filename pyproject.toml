@@ -2,7 +2,7 @@
 name = "djangorestframework-sso"
 version = "0.5.2"
 description = "Single sign-on extension to the Django REST Framework."
-readme = "README.rst"
+readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [{ name = "Lenno Nagel", email = "lenno@namespace.ee" }]
