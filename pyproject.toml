@@ -1,3 +1,65 @@
+[project]
+name = "djangorestframework-sso"
+version = "0.5.2"
+description = "Single sign-on extension to the Django REST Framework."
+readme = "README.rst"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "Lenno Nagel", email = "lenno@namespace.ee" }]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Web Environment",
+    "Framework :: Django",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Internet :: WWW/HTTP :: Session",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "Django",
+    "djangorestframework",
+    "cryptography",
+    "pem",
+    "PyJWT>=2.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/namespace-ee/django-rest-framework-sso"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-django",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["rest_framework_sso"]
+
+[tool.bumpversion]
+current_version = "0.5.2"
+commit = true
+tag = true
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
+
+[[tool.bumpversion.files]]
+filename = "rest_framework_sso/__init__.py"
+
 [tool.black]
 line-length = 120
 target-version = ["py312"]
@@ -5,8 +67,11 @@ include = '\.pyi?$'
 exclude = '''
 /(
     \.git
+  | \.venv
   | build
   | dist
-
 )/
 '''
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tests.settings"
