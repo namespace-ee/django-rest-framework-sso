@@ -80,8 +80,8 @@ class ObtainSessionTokenView(BaseAPIView):
         if session_token is None:
             session_token = SessionToken(user=user, client_id=client_id, created_by=user)
         session_token.update_attributes(request=request)
+        session_token.last_issued_at = timezone.now().replace(microsecond=0)
         payload = create_session_payload(session_token=session_token, user=user)
-        payload[claims.ISSUED_AT] = session_token.last_issued_at = timezone.now().replace(microsecond=0)
         session_token.save()
         jwt_token = encode_jwt_token(payload=payload)
         return Response({"token": jwt_token})
