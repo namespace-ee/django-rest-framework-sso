@@ -1,5 +1,6 @@
 import logging
 
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -66,6 +67,7 @@ class ObtainSessionTokenView(BaseAPIView):
     permission_classes = ()
     serializer_class = SessionTokenSerializer
 
+    @transaction.atomic
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
