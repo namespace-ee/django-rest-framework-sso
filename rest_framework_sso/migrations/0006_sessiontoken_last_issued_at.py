@@ -12,4 +12,8 @@ class Migration(migrations.Migration):
             name="last_issued_at",
             field=models.DateTimeField(blank=True, null=True),
         ),
+        migrations.RunSQL(
+            sql="UPDATE rest_framework_sso_sessiontoken SET last_issued_at = created_at WHERE last_issued_at IS NULL",
+            reverse_sql=migrations.RunSQL.noop,
+        ),
     ]
