@@ -1,5 +1,5 @@
 import json
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 import pytest
 import time_machine
@@ -32,7 +32,7 @@ def test_session_post_creates_token_with_last_issued_at(user, api_factory):
 
 @pytest.mark.django_db
 def test_session_post_iat_matches_last_issued_at(user, api_factory):
-    fixed = datetime(2026, 5, 13, 10, 0, 0, tzinfo=UTC)
+    fixed = datetime(2026, 5, 13, 10, 0, 0, tzinfo=timezone.utc)
     with time_machine.travel(fixed, tick=False):
         response = _post_session(api_factory, {"username": "alice", "password": "pw", "client_id": "web"})
         decoded = _decode(response)
@@ -43,8 +43,8 @@ def test_session_post_iat_matches_last_issued_at(user, api_factory):
 
 @pytest.mark.django_db
 def test_session_post_reuse_advances_last_issued_at(user, api_factory):
-    t1 = datetime(2026, 5, 13, 10, 0, 0, tzinfo=UTC)
-    t2 = datetime(2026, 5, 13, 10, 0, 5, tzinfo=UTC)
+    t1 = datetime(2026, 5, 13, 10, 0, 0, tzinfo=timezone.utc)
+    t2 = datetime(2026, 5, 13, 10, 0, 5, tzinfo=timezone.utc)
     with time_machine.travel(t1, tick=False):
         _post_session(api_factory, {"username": "alice", "password": "pw", "client_id": "web"})
     first = SessionToken.objects.get(user=user, client_id="web")
@@ -61,7 +61,7 @@ def test_session_post_reuse_advances_last_issued_at(user, api_factory):
 
 @pytest.mark.django_db
 def test_authorization_post_does_not_touch_last_issued_at(user, api_factory):
-    original_last_issued_at = datetime(2026, 1, 1, 0, 0, 0, tzinfo=UTC)
+    original_last_issued_at = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
     session_token = SessionToken.objects.create(
         user=user, client_id="web", created_by=user, last_issued_at=original_last_issued_at
     )

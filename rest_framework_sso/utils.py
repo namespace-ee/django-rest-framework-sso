@@ -1,5 +1,4 @@
 import logging
-from datetime import UTC, datetime
 
 import jwt
 from django.contrib.auth import get_user_model
@@ -61,7 +60,7 @@ def encode_jwt_token(payload):
             raise RuntimeError("SESSION_AUDIENCE must be specified in settings")
 
     if not payload.get(claims.ISSUED_AT):
-        payload[claims.ISSUED_AT] = datetime.now(tz=UTC).replace(microsecond=0)
+        payload[claims.ISSUED_AT] = timezone.now().replace(microsecond=0)
 
     if not payload.get(claims.EXPIRATION_TIME):
         if payload.get(claims.TOKEN) == claims.TOKEN_SESSION and api_settings.SESSION_EXPIRATION is not None:

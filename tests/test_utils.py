@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 import time_machine
@@ -19,7 +19,7 @@ def _base_payload(token_type=claims.TOKEN_SESSION):
 
 
 def test_caller_supplied_iat_preserved():
-    iat = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
+    iat = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
     payload = _base_payload()
     payload[claims.ISSUED_AT] = iat
     encode_jwt_token(payload=payload)
@@ -27,7 +27,7 @@ def test_caller_supplied_iat_preserved():
 
 
 def test_fallback_iat_truncated_to_whole_seconds():
-    fixed = datetime(2026, 5, 13, 10, 30, 45, 123456, tzinfo=UTC)
+    fixed = datetime(2026, 5, 13, 10, 30, 45, 123456, tzinfo=timezone.utc)
     payload = _base_payload()
     with time_machine.travel(fixed, tick=False):
         encode_jwt_token(payload=payload)
@@ -48,8 +48,8 @@ def test_authorization_exp_derived_from_iat():
 
 
 def test_caller_supplied_iat_drives_exp():
-    caller_iat = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
-    fallback_now = datetime(2030, 6, 15, 9, 0, 0, tzinfo=UTC)
+    caller_iat = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    fallback_now = datetime(2030, 6, 15, 9, 0, 0, tzinfo=timezone.utc)
     payload = _base_payload(claims.TOKEN_SESSION)
     payload[claims.ISSUED_AT] = caller_iat
     with time_machine.travel(fallback_now, tick=False):
@@ -58,7 +58,7 @@ def test_caller_supplied_iat_drives_exp():
 
 
 def test_caller_supplied_exp_preserved():
-    caller_exp = datetime(2027, 3, 14, 0, 0, 0, tzinfo=UTC)
+    caller_exp = datetime(2027, 3, 14, 0, 0, 0, tzinfo=timezone.utc)
     payload = _base_payload(claims.TOKEN_SESSION)
     payload[claims.EXPIRATION_TIME] = caller_exp
     payload[claims.ISSUED_AT] = caller_exp - timedelta(days=365)
@@ -79,7 +79,7 @@ def _auth_payload(session_token, user, iat=None):
 
 @pytest.mark.django_db
 def test_authenticate_rejects_iat_before_last_issued_at(user):
-    last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=UTC)
+    last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=timezone.utc)
     session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
     payload = _auth_payload(session_token, user, iat=int(last.timestamp()) - 1)
     with pytest.raises(AuthenticationFailed):
@@ -88,7 +88,7 @@ def test_authenticate_rejects_iat_before_last_issued_at(user):
 
 @pytest.mark.django_db
 def test_authenticate_accepts_iat_equal_last_issued_at(user):
-    last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=UTC)
+    last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=timezone.utc)
     session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
     payload = _auth_payload(session_token, user, iat=int(last.timestamp()))
     assert authenticate_payload(payload=payload) == user
@@ -96,7 +96,7 @@ def test_authenticate_accepts_iat_equal_last_issued_at(user):
 
 @pytest.mark.django_db
 def test_authenticate_accepts_iat_after_last_issued_at(user):
-    last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=UTC)
+    last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=timezone.utc)
     session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
     payload = _auth_payload(session_token, user, iat=int(last.timestamp()) + 1)
     assert authenticate_payload(payload=payload) == user
@@ -111,7 +111,7 @@ def test_authenticate_skips_check_when_last_issued_at_is_none(user):
 
 @pytest.mark.django_db
 def test_authenticate_rejects_payload_missing_iat(user):
-    last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=UTC)
+    last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=timezone.utc)
     session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
     payload = _auth_payload(session_token, user, iat=None)
     with pytest.raises(AuthenticationFailed):
@@ -121,7 +121,7 @@ def test_authenticate_rejects_payload_missing_iat(user):
 @pytest.mark.django_db
 def test_authenticate_skips_check_when_verify_disabled(user, monkeypatch):
     monkeypatch.setattr(api_settings, "VERIFY_TOKEN_ISSUED_AT", False)
-    last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=UTC)
+    last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=timezone.utc)
     session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
     payload = _auth_payload(session_token, user, iat=int(last.timestamp()) - 100)
     assert authenticate_payload(payload=payload) == user
