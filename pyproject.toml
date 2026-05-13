@@ -43,6 +43,7 @@ dev = [
     "pytest",
     "pytest-django",
     "ruff",
+    "time-machine>=3.2.0",
 ]
 
 [build-system]

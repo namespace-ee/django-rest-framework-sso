@@ -1,8 +1,8 @@
 import json
 from datetime import UTC, datetime
-from unittest.mock import patch
 
 import pytest
+import time_machine
 from rest_framework.test import force_authenticate
 
 from rest_framework_sso import claims
@@ -33,8 +33,7 @@ def test_session_post_creates_token_with_last_issued_at(user, api_factory):
 @pytest.mark.django_db
 def test_session_post_iat_matches_last_issued_at(user, api_factory):
     fixed = datetime(2026, 5, 13, 10, 0, 0, tzinfo=UTC)
-    with patch("rest_framework_sso.views.timezone") as tz_mock:
-        tz_mock.now.return_value = fixed
+    with time_machine.travel(fixed, tick=False):
         response = _post_session(api_factory, {"username": "alice", "password": "pw", "client_id": "web"})
     decoded = _decode(response)
     session_token = SessionToken.objects.get(user=user, client_id="web")
@@ -46,15 +45,15 @@ def test_session_post_iat_matches_last_issued_at(user, api_factory):
 def test_session_post_reuse_advances_last_issued_at(user, api_factory):
     t1 = datetime(2026, 5, 13, 10, 0, 0, tzinfo=UTC)
     t2 = datetime(2026, 5, 13, 10, 0, 5, tzinfo=UTC)
-    with patch("rest_framework_sso.views.timezone") as tz_mock:
-        tz_mock.now.side_effect = [t1, t2]
+    with time_machine.travel(t1, tick=False):
         _post_session(api_factory, {"username": "alice", "password": "pw", "client_id": "web"})
-        first = SessionToken.objects.get(user=user, client_id="web")
-        first_pk, first_created = first.pk, first.created_at
-        assert first.last_issued_at == t1
+    first = SessionToken.objects.get(user=user, client_id="web")
+    first_pk, first_created = first.pk, first.created_at
+    assert first.last_issued_at == t1
 
+    with time_machine.travel(t2, tick=False):
         _post_session(api_factory, {"username": "alice", "password": "pw", "client_id": "web"})
-        second = SessionToken.objects.get(user=user, client_id="web")
+    second = SessionToken.objects.get(user=user, client_id="web")
     assert second.pk == first_pk
     assert second.created_at == first_created
     assert second.last_issued_at == t2
