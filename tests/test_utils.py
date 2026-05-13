@@ -1,10 +1,13 @@
 from datetime import UTC, datetime, timedelta
 
+import pytest
 import time_machine
+from rest_framework.exceptions import AuthenticationFailed
 
 from rest_framework_sso import claims
+from rest_framework_sso.models import SessionToken
 from rest_framework_sso.settings import api_settings
-from rest_framework_sso.utils import encode_jwt_token
+from rest_framework_sso.utils import authenticate_payload, encode_jwt_token
 
 
 def _base_payload(token_type=claims.TOKEN_SESSION):
@@ -61,3 +64,64 @@ def test_caller_supplied_exp_preserved():
     payload[claims.ISSUED_AT] = caller_exp - timedelta(days=365)
     encode_jwt_token(payload=payload)
     assert payload[claims.EXPIRATION_TIME] == caller_exp
+
+
+def _auth_payload(session_token, user, iat=None):
+    payload = {
+        claims.TOKEN: claims.TOKEN_SESSION,
+        claims.SESSION_ID: session_token.pk,
+        claims.USER_ID: user.pk,
+    }
+    if iat is not None:
+        payload[claims.ISSUED_AT] = iat
+    return payload
+
+
+@pytest.mark.django_db
+def test_authenticate_rejects_iat_before_last_issued_at(user):
+    last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=UTC)
+    session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
+    payload = _auth_payload(session_token, user, iat=int(last.timestamp()) - 1)
+    with pytest.raises(AuthenticationFailed):
+        authenticate_payload(payload=payload)
+
+
+@pytest.mark.django_db
+def test_authenticate_accepts_iat_equal_last_issued_at(user):
+    last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=UTC)
+    session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
+    payload = _auth_payload(session_token, user, iat=int(last.timestamp()))
+    assert authenticate_payload(payload=payload) == user
+
+
+@pytest.mark.django_db
+def test_authenticate_accepts_iat_after_last_issued_at(user):
+    last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=UTC)
+    session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
+    payload = _auth_payload(session_token, user, iat=int(last.timestamp()) + 1)
+    assert authenticate_payload(payload=payload) == user
+
+
+@pytest.mark.django_db
+def test_authenticate_skips_check_when_last_issued_at_is_none(user):
+    session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=None)
+    payload = _auth_payload(session_token, user, iat=None)
+    assert authenticate_payload(payload=payload) == user
+
+
+@pytest.mark.django_db
+def test_authenticate_rejects_payload_missing_iat(user):
+    last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=UTC)
+    session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
+    payload = _auth_payload(session_token, user, iat=None)
+    with pytest.raises(AuthenticationFailed):
+        authenticate_payload(payload=payload)
+
+
+@pytest.mark.django_db
+def test_authenticate_skips_check_when_verify_disabled(user, monkeypatch):
+    monkeypatch.setattr(api_settings, "VERIFY_TOKEN_ISSUED_AT", False)
+    last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=UTC)
+    session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
+    payload = _auth_payload(session_token, user, iat=int(last.timestamp()) - 100)
+    assert authenticate_payload(payload=payload) == user

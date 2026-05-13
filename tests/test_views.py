@@ -35,7 +35,7 @@ def test_session_post_iat_matches_last_issued_at(user, api_factory):
     fixed = datetime(2026, 5, 13, 10, 0, 0, tzinfo=UTC)
     with time_machine.travel(fixed, tick=False):
         response = _post_session(api_factory, {"username": "alice", "password": "pw", "client_id": "web"})
-    decoded = _decode(response)
+        decoded = _decode(response)
     session_token = SessionToken.objects.get(user=user, client_id="web")
     assert decoded[claims.ISSUED_AT] == int(session_token.last_issued_at.timestamp())
     assert decoded[claims.ISSUED_AT] == int(fixed.timestamp())

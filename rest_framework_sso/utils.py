@@ -150,6 +150,10 @@ def authenticate_payload(payload, request=None):
                 .select_related("user")
                 .get(pk=payload.get(claims.SESSION_ID), user_id=payload.get(claims.USER_ID))
             )
+            if api_settings.VERIFY_TOKEN_ISSUED_AT and session_token.last_issued_at is not None:
+                iat = payload.get(claims.ISSUED_AT)
+                if iat is None or iat < int(session_token.last_issued_at.timestamp()):
+                    raise exceptions.AuthenticationFailed(_("Token has been superseded."))
             if request is not None:
                 session_token.update_attributes(request=request)
             session_token.last_used_at = timezone.now()

@@ -19,6 +19,7 @@ DEFAULTS = {
     "VERIFY_ISSUER": True,
     "VERIFY_AUDIENCE": True,
     "VERIFY_SESSION_TOKEN": True,
+    "VERIFY_TOKEN_ISSUED_AT": True,
     "EXPIRATION_LEEWAY": 0,
     "SESSION_EXPIRATION": None,
     "AUTHORIZATION_EXPIRATION": datetime.timedelta(seconds=300),
