@@ -153,10 +153,12 @@ def authenticate_payload(payload, request=None):
                 iat = payload.get(claims.ISSUED_AT)
                 if iat is None or iat < int(session_token.last_issued_at.timestamp()):
                     raise exceptions.AuthenticationFailed(_("Token has been superseded."))
+            update_fields = ["last_used_at"]
             if request is not None:
                 session_token.update_attributes(request=request)
+                update_fields += ["ip_address", "user_agent", "version"]
             session_token.last_used_at = timezone.now()
-            session_token.save()
+            session_token.save(update_fields=update_fields)
             user = session_token.user
         except SessionToken.DoesNotExist:
             raise exceptions.AuthenticationFailed(_("Invalid token."))
