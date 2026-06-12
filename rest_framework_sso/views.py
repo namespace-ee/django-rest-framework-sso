@@ -84,7 +84,10 @@ class ObtainSessionTokenView(BaseAPIView):
         session_token.update_attributes(request=request)
         session_token.last_issued_at = timezone.now().replace(microsecond=0)
         payload = create_session_payload(session_token=session_token, user=user)
-        session_token.save()
+        if session_token._state.adding:
+            session_token.save()
+        else:
+            session_token.save(update_fields=["ip_address", "user_agent", "version", "last_issued_at"])
         jwt_token = encode_jwt_token(payload=payload)
         return Response({"token": jwt_token})
 
@@ -116,7 +119,10 @@ class ObtainAuthorizationTokenView(BaseAPIView):
                 session_token = SessionToken(user=request.user, created_by=request.user)
 
         session_token.update_attributes(request=request)
-        session_token.save()
+        if session_token._state.adding:
+            session_token.save()
+        else:
+            session_token.save(update_fields=["ip_address", "user_agent", "version"])
         payload = create_authorization_payload(
             session_token=session_token, user=request.user, **serializer.validated_data
         )

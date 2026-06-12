@@ -59,6 +59,40 @@ def test_session_post_reuse_advances_last_issued_at(user, api_factory):
     assert second.last_issued_at == t2
 
 
+def _save_with_concurrent_revocation(revoked_at):
+    original_save = SessionToken.save
+
+    def save(self, *args, **kwargs):
+        SessionToken.objects.filter(pk=self.pk).update(revoked_at=revoked_at)
+        return original_save(self, *args, **kwargs)
+
+    return save
+
+
+@pytest.mark.django_db
+def test_session_post_does_not_unrevoke_concurrently_revoked_token(user, api_factory, monkeypatch):
+    session_token = SessionToken.objects.create(user=user, client_id="web", created_by=user)
+    revoked_at = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(SessionToken, "save", _save_with_concurrent_revocation(revoked_at))
+    response = _post_session(api_factory, {"username": "alice", "password": "pw", "client_id": "web"})
+    assert response.status_code == 200
+    session_token.refresh_from_db()
+    assert session_token.revoked_at == revoked_at
+
+
+@pytest.mark.django_db
+def test_authorization_post_does_not_unrevoke_concurrently_revoked_token(user, api_factory, monkeypatch):
+    session_token = SessionToken.objects.create(user=user, client_id="web", created_by=user)
+    revoked_at = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(SessionToken, "save", _save_with_concurrent_revocation(revoked_at))
+    request = api_factory.post("/authorize/", data={}, format="json")
+    force_authenticate(request, user=user, token={claims.SESSION_ID: str(session_token.pk)})
+    response = ObtainAuthorizationTokenView.as_view()(request)
+    assert response.status_code == 200
+    session_token.refresh_from_db()
+    assert session_token.revoked_at == revoked_at
+
+
 @pytest.mark.django_db
 def test_authorization_post_does_not_touch_last_issued_at(user, api_factory):
     original_last_issued_at = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
