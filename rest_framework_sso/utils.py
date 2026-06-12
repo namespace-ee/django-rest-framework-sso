@@ -1,5 +1,4 @@
 import logging
-from datetime import UTC, datetime
 
 import jwt
 from django.contrib.auth import get_user_model
@@ -23,6 +22,7 @@ def create_session_payload(session_token, user, **kwargs):
         claims.CLIENT_ID: session_token.client_id,
         claims.USER_ID: user.pk,
         claims.EMAIL: user.email,
+        claims.ISSUED_AT: session_token.last_issued_at,
     }
 
 
@@ -59,17 +59,17 @@ def encode_jwt_token(payload):
         else:
             raise RuntimeError("SESSION_AUDIENCE must be specified in settings")
 
+    if not payload.get(claims.ISSUED_AT):
+        payload[claims.ISSUED_AT] = timezone.now().replace(microsecond=0)
+
     if not payload.get(claims.EXPIRATION_TIME):
         if payload.get(claims.TOKEN) == claims.TOKEN_SESSION and api_settings.SESSION_EXPIRATION is not None:
-            payload[claims.EXPIRATION_TIME] = datetime.now(tz=UTC) + api_settings.SESSION_EXPIRATION
+            payload[claims.EXPIRATION_TIME] = payload[claims.ISSUED_AT] + api_settings.SESSION_EXPIRATION
         elif (
             payload.get(claims.TOKEN) == claims.TOKEN_AUTHORIZATION
             and api_settings.AUTHORIZATION_EXPIRATION is not None
         ):
-            payload[claims.EXPIRATION_TIME] = datetime.now(tz=UTC) + api_settings.AUTHORIZATION_EXPIRATION
-
-    if not payload.get(claims.ISSUED_AT):
-        payload[claims.ISSUED_AT] = datetime.now(tz=UTC)
+            payload[claims.EXPIRATION_TIME] = payload[claims.ISSUED_AT] + api_settings.AUTHORIZATION_EXPIRATION
 
     if payload[claims.ISSUER] not in api_settings.PRIVATE_KEYS:
         raise RuntimeError("Private key for specified issuer was not found in settings")
@@ -149,6 +149,10 @@ def authenticate_payload(payload, request=None):
                 .select_related("user")
                 .get(pk=payload.get(claims.SESSION_ID), user_id=payload.get(claims.USER_ID))
             )
+            if api_settings.VERIFY_TOKEN_ISSUED_AT and session_token.last_issued_at is not None:
+                iat = payload.get(claims.ISSUED_AT)
+                if iat is None or iat < int(session_token.last_issued_at.timestamp()):
+                    raise exceptions.AuthenticationFailed(_("Token has been superseded."))
             if request is not None:
                 session_token.update_attributes(request=request)
             session_token.last_used_at = timezone.now()

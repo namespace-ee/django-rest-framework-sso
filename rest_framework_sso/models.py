@@ -24,6 +24,7 @@ class SessionToken(models.Model):
     user_agent = models.CharField(max_length=1000, blank=True)
     version = models.CharField(max_length=100, blank=True, null=True)
     last_used_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    last_issued_at = models.DateTimeField(null=True, blank=True)
     created_by = models.ForeignKey(
         to=settings.AUTH_USER_MODEL,
         null=True,

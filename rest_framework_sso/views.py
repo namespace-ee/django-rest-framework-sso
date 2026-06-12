@@ -1,5 +1,7 @@
 import logging
 
+from django.db import transaction
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -65,6 +67,7 @@ class ObtainSessionTokenView(BaseAPIView):
     permission_classes = ()
     serializer_class = SessionTokenSerializer
 
+    @transaction.atomic
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -79,8 +82,9 @@ class ObtainSessionTokenView(BaseAPIView):
         if session_token is None:
             session_token = SessionToken(user=user, client_id=client_id, created_by=user)
         session_token.update_attributes(request=request)
-        session_token.save()
+        session_token.last_issued_at = timezone.now().replace(microsecond=0)
         payload = create_session_payload(session_token=session_token, user=user)
+        session_token.save()
         jwt_token = encode_jwt_token(payload=payload)
         return Response({"token": jwt_token})
 
