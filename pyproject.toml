@@ -1,6 +1,6 @@
 [project]
 name = "djangorestframework-sso"
-version = "0.6.0"
+version = "0.7.0"
 description = "Single sign-on extension to the Django REST Framework."
 readme = "README.md"
 license = "MIT"
@@ -54,7 +54,7 @@ build-backend = "hatchling.build"
 packages = ["rest_framework_sso"]
 
 [tool.bumpversion]
-current_version = "0.6.0"
+current_version = "0.7.0"
 commit = true
 tag = true
 
