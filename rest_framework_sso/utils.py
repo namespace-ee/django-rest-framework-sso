@@ -1,14 +1,12 @@
 import logging
 
 import jwt
-from django.contrib.auth import get_user_model
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils import timezone
-from django.utils.translation import gettext_lazy as _
 from jwt.exceptions import InvalidIssuerError, InvalidTokenError, MissingRequiredClaimError
-from rest_framework import exceptions
 
 from rest_framework_sso import claims
+from rest_framework_sso.credentials import JWTCredentials
 from rest_framework_sso.keys import get_private_key_and_key_id, get_public_key_and_key_id
 from rest_framework_sso.settings import api_settings
 
@@ -134,41 +132,4 @@ def decode_jwt_token(token):
     if not payload.get(claims.USER_ID):
         raise MissingRequiredClaimError("User ID is missing.")
 
-    return payload
-
-
-def authenticate_payload(payload, request=None):
-    from rest_framework_sso.models import SessionToken
-
-    user_model = get_user_model()
-
-    if api_settings.VERIFY_SESSION_TOKEN:
-        try:
-            session_token = (
-                SessionToken.objects.active()
-                .select_related("user")
-                .get(pk=payload.get(claims.SESSION_ID), user_id=payload.get(claims.USER_ID))
-            )
-            if api_settings.VERIFY_TOKEN_ISSUED_AT and session_token.last_issued_at is not None:
-                iat = payload.get(claims.ISSUED_AT)
-                if iat is None or iat < int(session_token.last_issued_at.timestamp()):
-                    raise exceptions.AuthenticationFailed(_("Token has been superseded."))
-            update_fields = ["last_used_at"]
-            if request is not None:
-                session_token.update_attributes(request=request)
-                update_fields += ["ip_address", "user_agent", "version"]
-            session_token.last_used_at = timezone.now()
-            session_token.save(update_fields=update_fields)
-            user = session_token.user
-        except SessionToken.DoesNotExist:
-            raise exceptions.AuthenticationFailed(_("Invalid token."))
-    else:
-        try:
-            user = user_model.objects.get(pk=payload.get(claims.USER_ID))
-        except user_model.DoesNotExist:
-            raise exceptions.AuthenticationFailed(_("Invalid token."))
-
-    if not user.is_active:
-        raise exceptions.AuthenticationFailed(_("User inactive or deleted."))
-
-    return user
+    return JWTCredentials(payload=payload, header=unverified_header)

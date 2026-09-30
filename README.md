@@ -99,33 +99,6 @@ REST_FRAMEWORK_SSO = {
 
 ## JWT Authentication
 
-In order to get-or-create User accounts automatically within your microservice apps,
-you may need to write your custom JWT payload authentication function:
-
-```python
-from django.contrib.auth import get_user_model
-from rest_framework_sso import claims
-
-def authenticate_payload(payload):
-    user_model = get_user_model()
-    user, created = user_model.objects.get_or_create(
-        service=payload.get(claims.ISSUER),
-        external_id=payload.get(claims.USER_ID),
-    )
-    if not user.is_active:
-        raise exceptions.AuthenticationFailed(_('User inactive or deleted.'))
-    return user
-```
-
-Enable `authenticate_payload` function in `REST_FRAMEWORK_SSO` settings:
-
-```python
-REST_FRAMEWORK_SSO = {
-    'AUTHENTICATE_PAYLOAD': 'otherapp.authentication.authenticate_payload',
-    ...
-}
-```
-
 Enable JWT authentication in the `REST_FRAMEWORK` settings:
 
 ```python
@@ -139,9 +112,16 @@ REST_FRAMEWORK = {
 }
 ```
 
-Requests that have been successfully authenticated with `JWTAuthentication` contain
-the JWT payload data in the `request.auth` variable. This data can be used in your
-API views/viewsets to handle permissions, for example:
+Requests that have been successfully authenticated with `JWTAuthentication` carry a
+`JWTCredentials` object in `request.auth`, with the following attributes:
+
+- `payload`: the verified JWT claims
+- `header`: the JWT header the token was signed with (`alg`, `kid`, ...)
+- `session_token`: the `SessionToken` the token belongs to, or `None` when
+  `VERIFY_SESSION_TOKEN` is disabled
+
+`request.auth` is also a read-only mapping over the payload, so `request.auth.get(claims.USER_ID)`
+works as well. This data can be used in your API views/viewsets to handle permissions, for example:
 
 ```python
 from rest_framework_sso import claims
@@ -154,10 +134,53 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         if not request.user.is_authenticated or not request.auth:
             return self.none()
         return User.objects.filter(
-            service=request.auth.get(claims.ISSUER),
-            external_id=request.auth.get(claims.USER_ID),
+            service=request.auth.payload[claims.ISSUER],
+            external_id=request.auth.payload[claims.USER_ID],
         )
 ```
+
+### Customizing authentication
+
+`JWTAuthentication.authenticate_credentials()` resolves the decoded token in two steps that
+can be overridden separately in a subclass:
+
+- `get_session_token(credentials, request)`: looks up and touches the active session token,
+  or returns `None` when `VERIFY_SESSION_TOKEN` is disabled
+- `get_user(credentials, session_token)`: resolves the user, either from the session token
+  or by the `uid` claim
+
+In order to get-or-create User accounts automatically within your microservice apps,
+override `get_user()`:
+
+```python
+from django.contrib.auth import get_user_model
+from rest_framework_sso import claims
+from rest_framework_sso.authentication import JWTAuthentication
+
+
+class OtherAppJWTAuthentication(JWTAuthentication):
+    def get_user(self, credentials, session_token=None):
+        user_model = get_user_model()
+        user, created = user_model.objects.get_or_create(
+            service=credentials.get(claims.ISSUER),
+            external_id=credentials.get(claims.USER_ID),
+        )
+        return user
+```
+
+and enable it in the `REST_FRAMEWORK` settings:
+
+```python
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'otherapp.authentication.OtherAppJWTAuthentication',
+        ...
+    ),
+    ...
+}
+```
+
+The inactive-user check is applied by `authenticate_credentials()` after `get_user()` returns.
 
 ## Settings
 
@@ -184,7 +207,6 @@ Example settings for project that only accepts tokens signed by `myapp` public k
 
 ```python
 REST_FRAMEWORK_SSO = {
-    'AUTHENTICATE_PAYLOAD': 'otherapp.authentication.authenticate_payload',
     'VERIFY_SESSION_TOKEN': False,
     'IDENTITY': 'otherapp',
     'ACCEPTED_ISSUERS': ['myapp'],
@@ -203,7 +225,6 @@ REST_FRAMEWORK_SSO = {
     'CREATE_AUTHORIZATION_PAYLOAD': 'rest_framework_sso.utils.create_authorization_payload',
     'ENCODE_JWT_TOKEN': 'rest_framework_sso.utils.encode_jwt_token',
     'DECODE_JWT_TOKEN': 'rest_framework_sso.utils.decode_jwt_token',
-    'AUTHENTICATE_PAYLOAD': 'rest_framework_sso.utils.authenticate_payload',
 
     'ENCODE_ALGORITHM': 'RS256',
     'DECODE_ALGORITHMS': None,

@@ -1,6 +1,7 @@
 import datetime
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.test.signals import setting_changed
 from rest_framework.settings import APISettings
 
@@ -11,7 +12,6 @@ DEFAULTS = {
     "CREATE_AUTHORIZATION_PAYLOAD": "rest_framework_sso.utils.create_authorization_payload",
     "ENCODE_JWT_TOKEN": "rest_framework_sso.utils.encode_jwt_token",
     "DECODE_JWT_TOKEN": "rest_framework_sso.utils.decode_jwt_token",
-    "AUTHENTICATE_PAYLOAD": "rest_framework_sso.utils.authenticate_payload",
     "ENCODE_ALGORITHM": "RS256",
     "DECODE_ALGORITHMS": None,
     "VERIFY_SIGNATURE": True,
@@ -39,8 +39,24 @@ IMPORT_STRINGS = (
     "CREATE_AUTHORIZATION_PAYLOAD",
     "ENCODE_JWT_TOKEN",
     "DECODE_JWT_TOKEN",
-    "AUTHENTICATE_PAYLOAD",
 )
+
+# Settings that have been removed, mapped to the replacement users should migrate to.
+REMOVED_SETTINGS = {
+    "AUTHENTICATE_PAYLOAD": (
+        "subclass rest_framework_sso.authentication.JWTAuthentication and override "
+        "get_session_token(), get_user() or authenticate_credentials()"
+    ),
+}
+
+
+def check_removed_settings(user_settings):
+    for name, replacement in REMOVED_SETTINGS.items():
+        if user_settings and name in user_settings:
+            raise ImproperlyConfigured(f"The REST_FRAMEWORK_SSO setting '{name}' has been removed; {replacement}.")
+
+
+check_removed_settings(USER_SETTINGS)
 
 api_settings = APISettings(USER_SETTINGS, DEFAULTS, IMPORT_STRINGS)
 
@@ -49,6 +65,7 @@ def reload_api_settings(*args, **kwargs):
     global api_settings
     setting, value = kwargs["setting"], kwargs["value"]
     if setting == "REST_FRAMEWORK_SSO":
+        check_removed_settings(value)
         api_settings = APISettings(value, DEFAULTS, IMPORT_STRINGS)
 
 
