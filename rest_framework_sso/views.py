@@ -104,22 +104,19 @@ class ObtainAuthorizationTokenView(BaseAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # JWTAuthentication attaches the verified session token to the credentials.
-        session_token = getattr(request.auth, "session_token", None)
-        if session_token is None:
-            if hasattr(request.auth, "get") and request.auth.get(claims.SESSION_ID):
-                try:
-                    session_token = SessionToken.objects.active().get(
-                        pk=request.auth.get(claims.SESSION_ID), user=request.user
-                    )
-                except SessionToken.DoesNotExist:
-                    return Response({"detail": "Invalid token."}, status=status.HTTP_401_UNAUTHORIZED)
-            else:
-                session_token = (
-                    SessionToken.objects.active().filter(user=request.user).with_user_agent(request=request).first()
+        if hasattr(request.auth, "get") and request.auth.get(claims.SESSION_ID):
+            try:
+                session_token = SessionToken.objects.active().get(
+                    pk=request.auth.get(claims.SESSION_ID), user=request.user
                 )
-                if session_token is None:
-                    session_token = SessionToken(user=request.user, created_by=request.user)
+            except SessionToken.DoesNotExist:
+                return Response({"detail": "Invalid token."}, status=status.HTTP_401_UNAUTHORIZED)
+        else:
+            session_token = (
+                SessionToken.objects.active().filter(user=request.user).with_user_agent(request=request).first()
+            )
+            if session_token is None:
+                session_token = SessionToken(user=request.user, created_by=request.user)
 
         session_token.update_attributes(request=request)
         if session_token._state.adding:

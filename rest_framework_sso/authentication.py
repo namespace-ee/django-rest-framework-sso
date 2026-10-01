@@ -1,20 +1,17 @@
 import logging
-from dataclasses import replace
 
 import jwt.exceptions
-from django.contrib.auth import get_user_model
-from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework import exceptions
 from rest_framework.authentication import BaseAuthentication, get_authorization_header
 
-from rest_framework_sso import claims
-from rest_framework_sso.models import SessionToken
+from rest_framework_sso.credentials import JWTCredentials
 from rest_framework_sso.settings import api_settings
 
 logger = logging.getLogger(__name__)
 
 decode_jwt_token = api_settings.DECODE_JWT_TOKEN
+authenticate_payload = api_settings.AUTHENTICATE_PAYLOAD
 
 
 class JWTAuthentication(BaseAuthentication):
@@ -64,65 +61,15 @@ class JWTAuthentication(BaseAuthentication):
         except jwt.exceptions.InvalidTokenError:
             raise exceptions.AuthenticationFailed()
 
-        return self.authenticate_credentials(credentials=credentials, request=request)
+        if not isinstance(credentials, JWTCredentials):
+            # Custom DECODE_JWT_TOKEN functions may still return a plain payload dict.
+            credentials = JWTCredentials(payload=credentials)
 
-    def authenticate_credentials(self, credentials, request=None):
-        """
-        Resolve the decoded token into ``(user, credentials)``, where the returned
-        credentials carry the verified session token.
-        """
-        session_token = self.get_session_token(credentials=credentials, request=request)
-        user = self.get_user(credentials=credentials, session_token=session_token)
-
-        if not user.is_active:
-            raise exceptions.AuthenticationFailed(_("User inactive or deleted."))
-
-        return user, replace(credentials, session_token=session_token)
-
-    def get_session_token(self, credentials, request=None):
-        """
-        Look up and touch the active session token the credentials refer to.
-
-        Returns ``None`` when session token verification is disabled.
-        """
-        if not api_settings.VERIFY_SESSION_TOKEN:
-            return None
-
-        try:
-            session_token = (
-                SessionToken.objects.active()
-                .select_related("user")
-                .get(pk=credentials.get(claims.SESSION_ID), user_id=credentials.get(claims.USER_ID))
-            )
-        except SessionToken.DoesNotExist:
-            raise exceptions.AuthenticationFailed(_("Invalid token."))
-
-        if api_settings.VERIFY_TOKEN_ISSUED_AT and session_token.last_issued_at is not None:
-            iat = credentials.get(claims.ISSUED_AT)
-            if iat is None or iat < int(session_token.last_issued_at.timestamp()):
-                raise exceptions.AuthenticationFailed(_("Token has been superseded."))
-
-        update_fields = ["last_used_at"]
-        if request is not None:
-            session_token.update_attributes(request=request)
-            update_fields += ["ip_address", "user_agent", "version"]
-        session_token.last_used_at = timezone.now()
-        session_token.save(update_fields=update_fields)
-        return session_token
-
-    def get_user(self, credentials, session_token=None):
-        """
-        Resolve the user for the credentials. Override this to get-or-create users
-        from the token claims in services that do not share the user database.
-        """
-        if session_token is not None:
-            return session_token.user
-
-        user_model = get_user_model()
-        try:
-            return user_model.objects.get(pk=credentials.get(claims.USER_ID))
-        except user_model.DoesNotExist:
-            raise exceptions.AuthenticationFailed(_("Invalid token."))
+        result = authenticate_payload(payload=credentials, request=request)
+        if isinstance(result, tuple):
+            return result
+        # Custom AUTHENTICATE_PAYLOAD functions may still return only the user.
+        return result, credentials
 
     def authenticate_header(self, request):
         return api_settings.AUTHENTICATE_HEADER
