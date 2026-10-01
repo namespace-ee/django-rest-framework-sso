@@ -17,7 +17,7 @@ def _request_with_token(api_factory, session_token, user):
 
 
 def test_credentials_is_read_only_mapping_over_payload():
-    credentials = JWTCredentials(payload={claims.USER_ID: 1}, header={claims.KEY_ID: "k"})
+    credentials = JWTCredentials(header={claims.KEY_ID: "k"}, payload={claims.USER_ID: 1})
     assert credentials.get(claims.USER_ID) == 1
     assert credentials[claims.USER_ID] == 1
     assert credentials.get(claims.SESSION_ID) is None

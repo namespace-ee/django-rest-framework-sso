@@ -24,7 +24,7 @@ class JWTAuthentication(BaseAuthentication):
         Authorization: JWT eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJsb2NhbG...
 
     On success ``request.auth`` is a ``JWTCredentials`` instance carrying the
-    decoded ``payload``, the token ``header`` and the matching ``session_token``.
+    token ``header``, the decoded ``payload`` and the matching ``session_token``.
     """
 
     def authenticate(self, request):
@@ -63,7 +63,7 @@ class JWTAuthentication(BaseAuthentication):
 
         if not isinstance(credentials, JWTCredentials):
             # Custom DECODE_JWT_TOKEN functions may still return a plain payload dict.
-            credentials = JWTCredentials(payload=credentials)
+            credentials = JWTCredentials(header={}, payload=credentials)
 
         result = authenticate_payload(payload=credentials, request=request)
         if isinstance(result, tuple):

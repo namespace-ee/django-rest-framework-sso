@@ -144,8 +144,8 @@ REST_FRAMEWORK = {
 Requests that have been successfully authenticated with `JWTAuthentication` carry a
 `JWTCredentials` object in `request.auth`, with the following attributes:
 
-- `payload`: the verified JWT claims
 - `header`: the JWT header the token was signed with (`alg`, `kid`, ...)
+- `payload`: the verified JWT claims
 - `session_token`: the `SessionToken` the token belongs to, or `None` when
   `VERIFY_SESSION_TOKEN` is disabled
 

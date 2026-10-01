@@ -75,7 +75,7 @@ def _auth_payload(session_token, user, iat=None):
     }
     if iat is not None:
         payload[claims.ISSUED_AT] = iat
-    return JWTCredentials(payload=payload)
+    return JWTCredentials(header={}, payload=payload)
 
 
 @pytest.mark.django_db
@@ -163,8 +163,8 @@ def test_authenticate_attaches_session_token_to_credentials(user):
     assert authenticated_user == user
     assert isinstance(returned, JWTCredentials)
     assert returned.session_token == session_token
-    assert returned.payload == credentials.payload
     assert returned.header == credentials.header
+    assert returned.payload == credentials.payload
 
 
 @pytest.mark.django_db

@@ -136,7 +136,7 @@ def decode_jwt_token(token):
     if not payload.get(claims.USER_ID):
         raise MissingRequiredClaimError("User ID is missing.")
 
-    return JWTCredentials(payload=payload, header=unverified_header)
+    return JWTCredentials(header=unverified_header, payload=payload)
 
 
 def authenticate_payload(payload, request=None):
