@@ -92,7 +92,8 @@ def test_authenticate_accepts_iat_equal_last_issued_at(user):
     last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=timezone.utc)
     session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
     payload = _auth_payload(session_token, user, iat=int(last.timestamp()))
-    assert authenticate_payload(payload=payload)[0] == user
+    authenticated_user, _ = authenticate_payload(payload=payload)
+    assert authenticated_user == user
 
 
 @pytest.mark.django_db
@@ -100,14 +101,16 @@ def test_authenticate_accepts_iat_after_last_issued_at(user):
     last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=timezone.utc)
     session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
     payload = _auth_payload(session_token, user, iat=int(last.timestamp()) + 1)
-    assert authenticate_payload(payload=payload)[0] == user
+    authenticated_user, _ = authenticate_payload(payload=payload)
+    assert authenticated_user == user
 
 
 @pytest.mark.django_db
 def test_authenticate_skips_check_when_last_issued_at_is_none(user):
     session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=None)
     payload = _auth_payload(session_token, user, iat=None)
-    assert authenticate_payload(payload=payload)[0] == user
+    authenticated_user, _ = authenticate_payload(payload=payload)
+    assert authenticated_user == user
 
 
 @pytest.mark.django_db
@@ -130,7 +133,8 @@ def test_authenticate_does_not_unrevoke_concurrently_revoked_token(user, monkeyp
         return original_save(self, *args, **kwargs)
 
     monkeypatch.setattr(SessionToken, "save", save_after_concurrent_revocation)
-    assert authenticate_payload(payload=_auth_payload(session_token, user))[0] == user
+    authenticated_user, _ = authenticate_payload(payload=_auth_payload(session_token, user))
+    assert authenticated_user == user
     session_token.refresh_from_db()
     assert session_token.revoked_at == revoked_at
 
@@ -139,7 +143,8 @@ def test_authenticate_does_not_unrevoke_concurrently_revoked_token(user, monkeyp
 def test_authenticate_persists_request_attributes_and_last_used_at(user, api_factory):
     session_token = SessionToken.objects.create(user=user, created_by=user)
     request = api_factory.get("/", HTTP_USER_AGENT="test-agent", REMOTE_ADDR="10.1.2.3")
-    assert authenticate_payload(payload=_auth_payload(session_token, user), request=request)[0] == user
+    authenticated_user, _ = authenticate_payload(payload=_auth_payload(session_token, user), request=request)
+    assert authenticated_user == user
     session_token.refresh_from_db()
     assert session_token.ip_address == "10.1.2.3"
     assert session_token.user_agent == "test-agent"
@@ -152,7 +157,8 @@ def test_authenticate_skips_check_when_verify_disabled(user, monkeypatch):
     last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=timezone.utc)
     session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
     payload = _auth_payload(session_token, user, iat=int(last.timestamp()) - 100)
-    assert authenticate_payload(payload=payload)[0] == user
+    authenticated_user, _ = authenticate_payload(payload=payload)
+    assert authenticated_user == user
 
 
 @pytest.mark.django_db
