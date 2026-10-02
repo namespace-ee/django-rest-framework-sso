@@ -5,7 +5,7 @@
 Django REST Framework SSO is an extension to Django REST Framework that enables
 Single sign-on in a microservice-oriented environment using the JWT standard.
 
-Supports Python 3.10+ and Django 4.2, 5.2, 6.0.
+Supports Python 3.11+ and Django 5.2, 6.0, 6.1.
 
 This library provides two types of JWT tokens:
 

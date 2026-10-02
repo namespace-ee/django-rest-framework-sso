@@ -21,20 +21,20 @@ uv build                      # Build package
 
 - Ruff with rules E, F, I (errors, pyflakes, isort)
 - Line length: 120
-- Target: Python 3.10
+- Target: Python 3.11
 
 ## Supported versions
 
-- Python: 3.10, 3.11, 3.12, 3.13, 3.14
-- Django: 4.2, 5.2, 6.0
+- Python: 3.11, 3.12, 3.13, 3.14
+- Django: 5.2, 6.0, 6.1
 
 ## CI matrix
 
 | Django | Python |
 |--------|--------|
-| 4.2 | 3.10, 3.12 |
-| 5.2 | 3.10, 3.12, 3.13, 3.14 |
+| 5.2 | 3.11, 3.12, 3.13, 3.14 |
 | 6.0 | 3.12, 3.13, 3.14 |
+| 6.1 | 3.12, 3.13, 3.14 |
 
 ## CI pipeline
 
