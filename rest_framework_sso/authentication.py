@@ -5,6 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import exceptions
 from rest_framework.authentication import BaseAuthentication, get_authorization_header
 
+from rest_framework_sso.credentials import JWTCredentials
 from rest_framework_sso.settings import api_settings
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,9 @@ class JWTAuthentication(BaseAuthentication):
     HTTP header, prepended with the string "JWT ".  For example:
 
         Authorization: JWT eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJsb2NhbG...
+
+    On success ``request.auth`` is a ``JWTCredentials`` instance carrying the
+    token ``header``, the decoded ``payload`` and the matching ``session_token``.
     """
 
     def authenticate(self, request):
@@ -44,7 +48,7 @@ class JWTAuthentication(BaseAuthentication):
             raise exceptions.AuthenticationFailed(msg)
 
         try:
-            payload = decode_jwt_token(token=token)
+            credentials = decode_jwt_token(token=token)
         except jwt.exceptions.ExpiredSignatureError:
             msg = _("Signature has expired.")
             raise exceptions.AuthenticationFailed(msg)
@@ -57,11 +61,15 @@ class JWTAuthentication(BaseAuthentication):
         except jwt.exceptions.InvalidTokenError:
             raise exceptions.AuthenticationFailed()
 
-        return self.authenticate_credentials(payload=payload, request=request)
+        if not isinstance(credentials, JWTCredentials):
+            # Custom DECODE_JWT_TOKEN functions may still return a plain payload dict.
+            credentials = JWTCredentials(header={}, payload=credentials)
 
-    def authenticate_credentials(self, payload, request=None):
-        user = authenticate_payload(payload=payload, request=request)
-        return user, payload
+        result = authenticate_payload(payload=credentials, request=request)
+        if isinstance(result, tuple):
+            return result
+        # Custom AUTHENTICATE_PAYLOAD functions may still return only the user.
+        return result, credentials
 
     def authenticate_header(self, request):
         return api_settings.AUTHENTICATE_HEADER

@@ -5,9 +5,10 @@ import time_machine
 from rest_framework.exceptions import AuthenticationFailed
 
 from rest_framework_sso import claims
+from rest_framework_sso.credentials import JWTCredentials
 from rest_framework_sso.models import SessionToken
 from rest_framework_sso.settings import api_settings
-from rest_framework_sso.utils import authenticate_payload, encode_jwt_token
+from rest_framework_sso.utils import authenticate_payload, decode_jwt_token, encode_jwt_token
 
 
 def _base_payload(token_type=claims.TOKEN_SESSION):
@@ -74,7 +75,7 @@ def _auth_payload(session_token, user, iat=None):
     }
     if iat is not None:
         payload[claims.ISSUED_AT] = iat
-    return payload
+    return JWTCredentials(header={}, payload=payload)
 
 
 @pytest.mark.django_db
@@ -91,7 +92,8 @@ def test_authenticate_accepts_iat_equal_last_issued_at(user):
     last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=timezone.utc)
     session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
     payload = _auth_payload(session_token, user, iat=int(last.timestamp()))
-    assert authenticate_payload(payload=payload) == user
+    authenticated_user, credentials = authenticate_payload(payload=payload)
+    assert authenticated_user == user
 
 
 @pytest.mark.django_db
@@ -99,14 +101,16 @@ def test_authenticate_accepts_iat_after_last_issued_at(user):
     last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=timezone.utc)
     session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
     payload = _auth_payload(session_token, user, iat=int(last.timestamp()) + 1)
-    assert authenticate_payload(payload=payload) == user
+    authenticated_user, credentials = authenticate_payload(payload=payload)
+    assert authenticated_user == user
 
 
 @pytest.mark.django_db
 def test_authenticate_skips_check_when_last_issued_at_is_none(user):
     session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=None)
     payload = _auth_payload(session_token, user, iat=None)
-    assert authenticate_payload(payload=payload) == user
+    authenticated_user, credentials = authenticate_payload(payload=payload)
+    assert authenticated_user == user
 
 
 @pytest.mark.django_db
@@ -129,7 +133,8 @@ def test_authenticate_does_not_unrevoke_concurrently_revoked_token(user, monkeyp
         return original_save(self, *args, **kwargs)
 
     monkeypatch.setattr(SessionToken, "save", save_after_concurrent_revocation)
-    assert authenticate_payload(payload=_auth_payload(session_token, user)) == user
+    authenticated_user, credentials = authenticate_payload(payload=_auth_payload(session_token, user))
+    assert authenticated_user == user
     session_token.refresh_from_db()
     assert session_token.revoked_at == revoked_at
 
@@ -138,7 +143,8 @@ def test_authenticate_does_not_unrevoke_concurrently_revoked_token(user, monkeyp
 def test_authenticate_persists_request_attributes_and_last_used_at(user, api_factory):
     session_token = SessionToken.objects.create(user=user, created_by=user)
     request = api_factory.get("/", HTTP_USER_AGENT="test-agent", REMOTE_ADDR="10.1.2.3")
-    assert authenticate_payload(payload=_auth_payload(session_token, user), request=request) == user
+    authenticated_user, credentials = authenticate_payload(payload=_auth_payload(session_token, user), request=request)
+    assert authenticated_user == user
     session_token.refresh_from_db()
     assert session_token.ip_address == "10.1.2.3"
     assert session_token.user_agent == "test-agent"
@@ -151,4 +157,36 @@ def test_authenticate_skips_check_when_verify_disabled(user, monkeypatch):
     last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=timezone.utc)
     session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
     payload = _auth_payload(session_token, user, iat=int(last.timestamp()) - 100)
-    assert authenticate_payload(payload=payload) == user
+    authenticated_user, credentials = authenticate_payload(payload=payload)
+    assert authenticated_user == user
+
+
+@pytest.mark.django_db
+def test_authenticate_attaches_session_token_to_credentials(user):
+    session_token = SessionToken.objects.create(user=user, created_by=user)
+    credentials = _auth_payload(session_token, user)
+    authenticated_user, returned = authenticate_payload(payload=credentials)
+    assert authenticated_user == user
+    assert isinstance(returned, JWTCredentials)
+    assert returned.session_token == session_token
+    assert returned.header == credentials.header
+    assert returned.payload == credentials.payload
+
+
+@pytest.mark.django_db
+def test_authenticate_without_session_verification_leaves_session_token_empty(user, monkeypatch):
+    monkeypatch.setattr(api_settings, "VERIFY_SESSION_TOKEN", False)
+    session_token = SessionToken.objects.create(user=user, created_by=user)
+    authenticated_user, returned = authenticate_payload(payload=_auth_payload(session_token, user))
+    assert authenticated_user == user
+    assert returned.session_token is None
+
+
+def test_decode_returns_credentials_with_header_and_payload():
+    payload = _base_payload()
+    credentials = decode_jwt_token(encode_jwt_token(payload=payload))
+    assert isinstance(credentials, JWTCredentials)
+    assert credentials.header[claims.ALGORITHM] == api_settings.ENCODE_ALGORITHM
+    assert credentials.header[claims.KEY_ID]
+    assert credentials.payload[claims.SESSION_ID] == payload[claims.SESSION_ID]
+    assert credentials.session_token is None

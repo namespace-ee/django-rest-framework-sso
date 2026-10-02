@@ -100,13 +100,15 @@ REST_FRAMEWORK_SSO = {
 ## JWT Authentication
 
 In order to get-or-create User accounts automatically within your microservice apps,
-you may need to write your custom JWT payload authentication function:
+you may need to write your custom JWT payload authentication function. It receives the
+decoded `JWTCredentials` and returns the user together with the credentials to expose
+in `request.auth` (returning only the user is still supported):
 
 ```python
 from django.contrib.auth import get_user_model
 from rest_framework_sso import claims
 
-def authenticate_payload(payload):
+def authenticate_payload(payload, request=None):
     user_model = get_user_model()
     user, created = user_model.objects.get_or_create(
         service=payload.get(claims.ISSUER),
@@ -114,7 +116,7 @@ def authenticate_payload(payload):
     )
     if not user.is_active:
         raise exceptions.AuthenticationFailed(_('User inactive or deleted.'))
-    return user
+    return user, payload
 ```
 
 Enable `authenticate_payload` function in `REST_FRAMEWORK_SSO` settings:
@@ -139,9 +141,16 @@ REST_FRAMEWORK = {
 }
 ```
 
-Requests that have been successfully authenticated with `JWTAuthentication` contain
-the JWT payload data in the `request.auth` variable. This data can be used in your
-API views/viewsets to handle permissions, for example:
+Requests that have been successfully authenticated with `JWTAuthentication` carry a
+`JWTCredentials` object in `request.auth`, with the following attributes:
+
+- `header`: the JWT header the token was signed with (`alg`, `kid`, ...)
+- `payload`: the verified JWT claims
+- `session_token`: the `SessionToken` the token belongs to, or `None` when
+  `VERIFY_SESSION_TOKEN` is disabled
+
+`request.auth` is also a read-only mapping over the payload, so `request.auth.get(claims.USER_ID)`
+works as well. This data can be used in your API views/viewsets to handle permissions, for example:
 
 ```python
 from rest_framework_sso import claims
