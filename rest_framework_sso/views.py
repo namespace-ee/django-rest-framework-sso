@@ -2,13 +2,13 @@ import logging
 
 from django.db import transaction
 from django.utils import timezone
-from rest_framework import status
+from django.utils.translation import gettext_lazy as _
+from rest_framework import exceptions
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from rest_framework_sso import claims
-from rest_framework_sso.credentials import VerifiedSessionCredentials
+from rest_framework_sso.credentials import SessionTokenCredentials
 from rest_framework_sso.models import SessionToken
 from rest_framework_sso.serializers import AuthorizationTokenSerializer, SessionTokenSerializer
 from rest_framework_sso.settings import api_settings
@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 create_session_payload = api_settings.CREATE_SESSION_PAYLOAD
 create_authorization_payload = api_settings.CREATE_AUTHORIZATION_PAYLOAD
 encode_jwt_token = api_settings.ENCODE_JWT_TOKEN
-decode_jwt_token = api_settings.DECODE_JWT_TOKEN
 
 
 class BaseAPIView(APIView):
@@ -102,30 +101,15 @@ class ObtainAuthorizationTokenView(BaseAPIView):
     serializer_class = AuthorizationTokenSerializer
 
     def post(self, request, *args, **kwargs):
+        if not isinstance(request.auth, SessionTokenCredentials):
+            raise exceptions.PermissionDenied(_("Authorization tokens can only be obtained with a session token."))
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        if isinstance(request.auth, VerifiedSessionCredentials):
-            session_token = request.auth.session_token
-        elif hasattr(request.auth, "get") and request.auth.get(claims.SESSION_ID):
-            try:
-                session_token = SessionToken.objects.active().get(
-                    pk=request.auth.get(claims.SESSION_ID), user=request.user
-                )
-            except SessionToken.DoesNotExist:  # ty: ignore[unresolved-attribute]
-                return Response({"detail": "Invalid token."}, status=status.HTTP_401_UNAUTHORIZED)
-        else:
-            session_token = (
-                SessionToken.objects.active().filter(user=request.user).with_user_agent(request=request).first()
-            )
-            if session_token is None:
-                session_token = SessionToken(user=request.user, created_by=request.user)
-
+        session_token = request.auth.session_token
         session_token.update_attributes(request=request)
-        if session_token._state.adding:
-            session_token.save()
-        else:
-            session_token.save(update_fields=["ip_address", "user_agent", "version"])
+        session_token.save(update_fields=["ip_address", "user_agent", "version"])
         payload = create_authorization_payload(
             session_token=session_token, user=request.user, **serializer.validated_data
         )
