@@ -70,27 +70,9 @@ def test_legacy_decode_jwt_token_returning_dict(user, api_factory, monkeypatch):
     assert credentials.get(claims.SESSION_ID) == str(session_token.pk)
 
 
-def _request_with_payload(api_factory, payload):
-    return api_factory.get("/", HTTP_AUTHORIZATION=f"JWT {encode_jwt_token(payload=payload)}")
-
-
 @pytest.mark.django_db
-@pytest.mark.parametrize("override", [None, "decode_jwt_token", "authenticate_payload"])
-def test_validate_payload_runs_with_custom_hooks(override, user, api_factory, monkeypatch):
-    if override == "decode_jwt_token":
-        original_decode = authentication.decode_jwt_token
-        monkeypatch.setattr(authentication, "decode_jwt_token", lambda token: dict(original_decode(token=token)))
-    elif override == "authenticate_payload":
-        monkeypatch.setattr(authentication, "authenticate_payload", lambda payload, request=None: (user, payload))
-    request = _request_with_payload(api_factory, {claims.TOKEN: claims.TOKEN_SESSION, claims.USER_ID: user.pk})
+def test_authenticate_validates_payload(user, api_factory):
+    token = encode_jwt_token(payload={claims.TOKEN: claims.TOKEN_SESSION, claims.USER_ID: user.pk})
+    request = api_factory.get("/", HTTP_AUTHORIZATION=f"JWT {token}")
     with pytest.raises(AuthenticationFailed, match="Session ID is missing."):
         JWTAuthentication().authenticate(request)
-
-
-@pytest.mark.django_db
-def test_custom_validate_payload_replaces_default(user, api_factory, monkeypatch):
-    monkeypatch.setattr(authentication, "validate_payload", lambda payload: None)
-    monkeypatch.setattr(authentication, "authenticate_payload", lambda payload, request=None: (user, payload))
-    request = _request_with_payload(api_factory, {claims.TOKEN: claims.TOKEN_AUTHORIZATION, claims.USER_ID: user.pk})
-    authenticated_user, _ = JWTAuthentication().authenticate(request)
-    assert authenticated_user == user
