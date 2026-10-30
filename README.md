@@ -122,7 +122,8 @@ def authenticate_payload(credentials, request=None):
 
 A custom function that verifies the session itself should return `SessionTokenCredentials` for
 session tokens and `AuthorizationTokenCredentials` for authorization tokens, so views can use
-`request.auth.session_token`:
+`request.auth.session_token`. `ObtainAuthorizationTokenView` only issues authorization tokens to
+requests authenticated with `SessionTokenCredentials`:
 
 ```python
 from rest_framework_sso.credentials import SessionTokenCredentials

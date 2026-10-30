@@ -6,7 +6,7 @@ import time_machine
 from rest_framework.test import force_authenticate
 
 from rest_framework_sso import claims
-from rest_framework_sso.credentials import JWTCredentials, SessionTokenCredentials
+from rest_framework_sso.credentials import AuthorizationTokenCredentials, JWTCredentials, SessionTokenCredentials
 from rest_framework_sso.models import SessionToken
 from rest_framework_sso.utils import decode_jwt_token
 from rest_framework_sso.views import ObtainAuthorizationTokenView, ObtainSessionTokenView
@@ -20,6 +20,11 @@ def _post_session(api_factory, data):
 def _decode(response):
     body = json.loads(response.rendered_content)
     return decode_jwt_token(body["token"])
+
+
+def _session_credentials(session_token, credentials_class=SessionTokenCredentials):
+    payload = {claims.SESSION_ID: str(session_token.pk)}
+    return credentials_class(header={}, payload=payload, session_token=session_token)
 
 
 @pytest.mark.django_db
@@ -87,9 +92,7 @@ def test_authorization_post_does_not_unrevoke_concurrently_revoked_token(user, a
     revoked_at = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
     monkeypatch.setattr(SessionToken, "save", _save_with_concurrent_revocation(revoked_at))
     request = api_factory.post("/authorize/", data={}, format="json")
-    force_authenticate(
-        request, user=user, token=JWTCredentials(header={}, payload={claims.SESSION_ID: str(session_token.pk)})
-    )
+    force_authenticate(request, user=user, token=_session_credentials(session_token))
     response = ObtainAuthorizationTokenView.as_view()(request)
     assert response.status_code == 200
     session_token.refresh_from_db()
@@ -103,9 +106,7 @@ def test_authorization_post_does_not_touch_last_issued_at(user, api_factory):
         user=user, client_id="web", created_by=user, last_issued_at=original_last_issued_at
     )
     request = api_factory.post("/authorize/", data={}, format="json")
-    force_authenticate(
-        request, user=user, token=JWTCredentials(header={}, payload={claims.SESSION_ID: str(session_token.pk)})
-    )
+    force_authenticate(request, user=user, token=_session_credentials(session_token))
     response = ObtainAuthorizationTokenView.as_view()(request)
     assert response.status_code == 200
     session_token.refresh_from_db()
@@ -115,11 +116,8 @@ def test_authorization_post_does_not_touch_last_issued_at(user, api_factory):
 @pytest.mark.django_db
 def test_authorization_post_reuses_verified_session_token(user, api_factory, django_assert_num_queries):
     session_token = SessionToken.objects.create(user=user, client_id="web", created_by=user)
-    credentials = SessionTokenCredentials(
-        header={}, payload={claims.SESSION_ID: str(session_token.pk)}, session_token=session_token
-    )
     request = api_factory.post("/authorize/", data={}, format="json")
-    force_authenticate(request, user=user, token=credentials)
+    force_authenticate(request, user=user, token=_session_credentials(session_token))
     # Only the attribute update; the session token is not fetched again.
     with django_assert_num_queries(1):
         response = ObtainAuthorizationTokenView.as_view()(request)
@@ -128,13 +126,18 @@ def test_authorization_post_reuses_verified_session_token(user, api_factory, dja
 
 
 @pytest.mark.django_db
-def test_authorization_post_rejects_revoked_session(user, api_factory):
-    session_token = SessionToken.objects.create(
-        user=user, client_id="web", created_by=user, revoked_at=datetime(2026, 1, 1, tzinfo=timezone.utc)
-    )
+@pytest.mark.parametrize(
+    "make_token",
+    [
+        lambda session_token: JWTCredentials(header={}, payload={claims.SESSION_ID: str(session_token.pk)}),
+        lambda session_token: _session_credentials(session_token, AuthorizationTokenCredentials),
+        lambda session_token: None,
+    ],
+    ids=["unverified-jwt", "authorization-token", "no-jwt"],
+)
+def test_authorization_post_requires_session_token_credentials(user, api_factory, make_token):
+    session_token = SessionToken.objects.create(user=user, client_id="web", created_by=user)
     request = api_factory.post("/authorize/", data={}, format="json")
-    force_authenticate(
-        request, user=user, token=JWTCredentials(header={}, payload={claims.SESSION_ID: str(session_token.pk)})
-    )
+    force_authenticate(request, user=user, token=make_token(session_token))
     response = ObtainAuthorizationTokenView.as_view()(request)
-    assert response.status_code == 401
+    assert response.status_code == 403
