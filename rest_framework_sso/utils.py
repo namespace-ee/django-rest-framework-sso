@@ -18,6 +18,7 @@ from rest_framework_sso.settings import api_settings
 
 if TYPE_CHECKING:
     from django.contrib.auth.base_user import AbstractBaseUser
+    from django.contrib.auth.models import AbstractUser
     from rest_framework.request import Request
 
     from rest_framework_sso.models import SessionToken
@@ -25,7 +26,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def create_session_payload(session_token: SessionToken, user: AbstractBaseUser, **kwargs: Any) -> dict[str, Any]:
+def create_session_payload(session_token: SessionToken, user: AbstractUser, **kwargs: Any) -> dict[str, Any]:
     return {
         claims.TOKEN: claims.TOKEN_SESSION,
         claims.SESSION_ID: session_token.pk,
@@ -36,7 +37,7 @@ def create_session_payload(session_token: SessionToken, user: AbstractBaseUser, 
     }
 
 
-def create_authorization_payload(session_token: SessionToken, user: AbstractBaseUser, **kwargs: Any) -> dict[str, Any]:
+def create_authorization_payload(session_token: SessionToken, user: AbstractUser, **kwargs: Any) -> dict[str, Any]:
     return {
         claims.TOKEN: claims.TOKEN_AUTHORIZATION,
         claims.SESSION_ID: session_token.pk,
