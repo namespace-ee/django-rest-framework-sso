@@ -214,8 +214,8 @@ def test_decode_returns_credentials_with_header_and_payload():
 def test_decode_leaves_claim_validation_to_validate_payload():
     payload = {claims.TOKEN: claims.TOKEN_SESSION}
     credentials = decode_jwt_token(encode_jwt_token(payload=payload))
-    assert credentials.get(claims.SESSION_ID) is None
-    assert credentials.get(claims.USER_ID) is None
+    assert credentials.payload.get(claims.SESSION_ID) is None
+    assert credentials.payload.get(claims.USER_ID) is None
 
 
 @pytest.mark.parametrize("token_type", [claims.TOKEN_SESSION, claims.TOKEN_AUTHORIZATION])

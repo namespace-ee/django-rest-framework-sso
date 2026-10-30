@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -9,15 +8,12 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True, kw_only=True)
-class JWTCredentials(Mapping):
+class JWTCredentials:
     """
     Decoded JWT token exposed as ``request.auth`` after successful authentication.
 
     ``header`` holds the JOSE header the token was signed with and ``payload`` the
-    verified claims.
-
-    The object is a read-only mapping over ``payload``, so ``request.auth.get(claims.X)``
-    keeps working alongside ``request.auth.payload``.
+    verified claims; read claims through ``payload``, e.g. ``request.auth.payload.get(claims.X)``.
     """
 
     header: dict[str, Any]
@@ -28,15 +24,6 @@ class JWTCredentials(Mapping):
             raise TypeError(f"header must be a dict, not {type(self.header).__name__}")
         if not isinstance(self.payload, dict):
             raise TypeError(f"payload must be a dict, not {type(self.payload).__name__}")
-
-    def __getitem__(self, key):
-        return self.payload[key]
-
-    def __iter__(self):
-        return iter(self.payload)
-
-    def __len__(self):
-        return len(self.payload)
 
 
 @dataclass(frozen=True, kw_only=True)

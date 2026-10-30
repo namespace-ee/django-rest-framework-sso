@@ -43,8 +43,8 @@ def test_session_post_iat_matches_last_issued_at(user, api_factory):
         response = _post_session(api_factory, {"username": "alice", "password": "pw", "client_id": "web"})
         decoded = _decode(response)
     session_token = SessionToken.objects.get(user=user, client_id="web")
-    assert decoded[claims.ISSUED_AT] == int(session_token.last_issued_at.timestamp())
-    assert decoded[claims.ISSUED_AT] == int(fixed.timestamp())
+    assert decoded.payload[claims.ISSUED_AT] == int(session_token.last_issued_at.timestamp())
+    assert decoded.payload[claims.ISSUED_AT] == int(fixed.timestamp())
 
 
 @pytest.mark.django_db
@@ -122,7 +122,7 @@ def test_authorization_post_reuses_verified_session_token(user, api_factory, dja
     with django_assert_num_queries(1):
         response = ObtainAuthorizationTokenView.as_view()(request)
     assert response.status_code == 200
-    assert _decode(response)[claims.SESSION_ID] == str(session_token.pk)
+    assert _decode(response).payload[claims.SESSION_ID] == str(session_token.pk)
 
 
 @pytest.mark.django_db

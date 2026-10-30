@@ -17,13 +17,9 @@ def _request_with_token(api_factory, session_token, user):
     return api_factory.get("/", HTTP_AUTHORIZATION=f"JWT {token}")
 
 
-def test_credentials_is_read_only_mapping_over_payload():
+def test_credentials_are_frozen_and_keyword_only():
     credentials = JWTCredentials(header={claims.KEY_ID: "k"}, payload={claims.USER_ID: 1})
-    assert credentials.get(claims.USER_ID) == 1
-    assert credentials[claims.USER_ID] == 1
-    assert credentials.get(claims.SESSION_ID) is None
-    assert claims.USER_ID in credentials
-    assert dict(credentials) == {claims.USER_ID: 1}
+    assert credentials.payload == {claims.USER_ID: 1}
     assert credentials.header == {claims.KEY_ID: "k"}
     with pytest.raises(FrozenInstanceError):
         credentials.header = {}  # ty: ignore[invalid-assignment]
@@ -61,7 +57,7 @@ def test_authenticate_request_end_to_end(user, api_factory):
     assert credentials.session_token == session_token
     assert credentials.header[claims.KEY_ID]
     assert credentials.payload[claims.ISSUER] == api_settings.IDENTITY
-    assert credentials.get(claims.SESSION_ID) == str(session_token.pk)
+    assert credentials.payload.get(claims.SESSION_ID) == str(session_token.pk)
 
 
 @pytest.mark.django_db
