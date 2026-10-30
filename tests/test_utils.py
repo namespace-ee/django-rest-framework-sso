@@ -5,7 +5,7 @@ import time_machine
 from rest_framework.exceptions import AuthenticationFailed
 
 from rest_framework_sso import claims
-from rest_framework_sso.credentials import JWTCredentials
+from rest_framework_sso.credentials import JWTCredentials, SessionTokenCredentials
 from rest_framework_sso.models import SessionToken
 from rest_framework_sso.settings import api_settings
 from rest_framework_sso.utils import authenticate_payload, decode_jwt_token, encode_jwt_token, validate_payload
@@ -167,19 +167,19 @@ def test_authenticate_attaches_session_token_to_credentials(user):
     credentials = _auth_payload(session_token, user)
     authenticated_user, returned = authenticate_payload(payload=credentials)
     assert authenticated_user == user
-    assert isinstance(returned, JWTCredentials)
+    assert isinstance(returned, SessionTokenCredentials)
     assert returned.session_token == session_token
     assert returned.header == credentials.header
     assert returned.payload == credentials.payload
 
 
 @pytest.mark.django_db
-def test_authenticate_without_session_verification_leaves_session_token_empty(user, monkeypatch):
+def test_authenticate_without_session_verification_returns_plain_credentials(user, monkeypatch):
     monkeypatch.setattr(api_settings, "VERIFY_SESSION_TOKEN", False)
     session_token = SessionToken.objects.create(user=user, created_by=user)
     authenticated_user, returned = authenticate_payload(payload=_auth_payload(session_token, user))
     assert authenticated_user == user
-    assert returned.session_token is None
+    assert type(returned) is JWTCredentials
 
 
 def test_decode_returns_credentials_with_header_and_payload():
@@ -189,7 +189,6 @@ def test_decode_returns_credentials_with_header_and_payload():
     assert credentials.header[claims.ALGORITHM] == api_settings.ENCODE_ALGORITHM
     assert credentials.header[claims.KEY_ID]
     assert credentials.payload[claims.SESSION_ID] == payload[claims.SESSION_ID]
-    assert credentials.session_token is None
 
 
 def test_decode_leaves_claim_validation_to_validate_payload():
