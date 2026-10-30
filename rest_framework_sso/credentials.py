@@ -23,6 +23,12 @@ class JWTCredentials(Mapping):
     header: dict[str, Any]
     payload: dict[str, Any]
 
+    def __post_init__(self):
+        if not isinstance(self.header, dict):
+            raise TypeError(f"header must be a dict, not {type(self.header).__name__}")
+        if not isinstance(self.payload, dict):
+            raise TypeError(f"payload must be a dict, not {type(self.payload).__name__}")
+
     def __getitem__(self, key):
         return self.payload[key]
 
@@ -40,6 +46,13 @@ class VerifiedSessionCredentials(JWTCredentials):
     """
 
     session_token: SessionToken
+
+    def __post_init__(self):
+        super().__post_init__()
+        from rest_framework_sso.models import SessionToken
+
+        if not isinstance(self.session_token, SessionToken):
+            raise TypeError(f"session_token must be a SessionToken, not {type(self.session_token).__name__}")
 
 
 @dataclass(frozen=True, kw_only=True)
