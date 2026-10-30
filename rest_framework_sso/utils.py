@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-from jwt.exceptions import InvalidIssuerError, InvalidTokenError, MissingRequiredClaimError
+from jwt.exceptions import InvalidIssuerError, MissingRequiredClaimError
 from rest_framework import exceptions
 
 from rest_framework_sso import claims
@@ -129,14 +129,22 @@ def decode_jwt_token(token):
         issuer=unverified_issuer,
     )
 
-    if payload.get(claims.TOKEN) not in (claims.TOKEN_SESSION, claims.TOKEN_AUTHORIZATION):
-        raise InvalidTokenError("Unknown token type")
-    if not payload.get(claims.SESSION_ID):
-        raise MissingRequiredClaimError("Session ID is missing.")
-    if not payload.get(claims.USER_ID):
-        raise MissingRequiredClaimError("User ID is missing.")
-
     return JWTCredentials(header=unverified_header, payload=payload)
+
+
+def validate_payload(payload):
+    """
+    Validate the claims of a decoded token before it is authenticated.
+
+    Raise ``AuthenticationFailed`` to reject the token; the return value is ignored.
+    Runs regardless of custom ``DECODE_JWT_TOKEN`` and ``AUTHENTICATE_PAYLOAD`` functions.
+    """
+    if payload.get(claims.TOKEN) not in (claims.TOKEN_SESSION, claims.TOKEN_AUTHORIZATION):
+        raise exceptions.AuthenticationFailed(_("Unknown token type."))
+    if not payload.get(claims.SESSION_ID):
+        raise exceptions.AuthenticationFailed(_("Session ID is missing."))
+    if not payload.get(claims.USER_ID):
+        raise exceptions.AuthenticationFailed(_("User ID is missing."))
 
 
 def authenticate_payload(payload, request=None):
