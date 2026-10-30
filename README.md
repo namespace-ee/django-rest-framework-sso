@@ -119,6 +119,15 @@ def authenticate_payload(payload, request=None):
     return user, payload
 ```
 
+A custom function that verifies the session itself should return `SessionTokenCredentials`
+so views can use `request.auth.session_token`:
+
+```python
+from rest_framework_sso.credentials import SessionTokenCredentials
+
+return user, SessionTokenCredentials(header=payload.header, payload=payload.payload, session_token=session_token)
+```
+
 Enable `authenticate_payload` function in `REST_FRAMEWORK_SSO` settings:
 
 ```python
@@ -165,8 +174,18 @@ Requests that have been successfully authenticated with `JWTAuthentication` carr
 
 - `header`: the JWT header the token was signed with (`alg`, `kid`, ...)
 - `payload`: the verified JWT claims
-- `session_token`: the `SessionToken` the token belongs to, or `None` when
-  `VERIFY_SESSION_TOKEN` is disabled
+
+When the session was verified against the database (`VERIFY_SESSION_TOKEN`, enabled by default),
+`request.auth` is a `SessionTokenCredentials` subclass that also carries `session_token`, the
+`SessionToken` the token belongs to. Authorization tokens get the `AuthorizationTokenCredentials`
+subclass of it:
+
+```python
+from rest_framework_sso.credentials import SessionTokenCredentials
+
+if isinstance(request.auth, SessionTokenCredentials):
+    session_token = request.auth.session_token
+```
 
 `request.auth` is also a read-only mapping over the payload, so `request.auth.get(claims.USER_ID)`
 works as well. This data can be used in your API views/viewsets to handle permissions, for example:

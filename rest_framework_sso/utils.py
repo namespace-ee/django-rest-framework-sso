@@ -1,5 +1,4 @@
 import logging
-from dataclasses import replace
 
 import jwt
 from django.contrib.auth import get_user_model
@@ -10,7 +9,7 @@ from jwt.exceptions import InvalidIssuerError, MissingRequiredClaimError
 from rest_framework import exceptions
 
 from rest_framework_sso import claims
-from rest_framework_sso.credentials import JWTCredentials
+from rest_framework_sso.credentials import AuthorizationTokenCredentials, JWTCredentials, SessionTokenCredentials
 from rest_framework_sso.keys import get_private_key_and_key_id, get_public_key_and_key_id
 from rest_framework_sso.settings import api_settings
 
@@ -151,7 +150,6 @@ def authenticate_payload(payload, request=None):
     from rest_framework_sso.models import SessionToken
 
     user_model = get_user_model()
-    session_token = None
 
     if api_settings.VERIFY_SESSION_TOKEN:
         try:
@@ -182,4 +180,10 @@ def authenticate_payload(payload, request=None):
     if not user.is_active:
         raise exceptions.AuthenticationFailed(_("User inactive or deleted."))
 
-    return user, replace(payload, session_token=session_token)
+    if not api_settings.VERIFY_SESSION_TOKEN:
+        return user, payload
+    if payload.get(claims.TOKEN) == claims.TOKEN_AUTHORIZATION:
+        credentials_class = AuthorizationTokenCredentials
+    else:
+        credentials_class = SessionTokenCredentials
+    return user, credentials_class(header=payload.header, payload=payload.payload, session_token=session_token)
