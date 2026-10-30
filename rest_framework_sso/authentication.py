@@ -66,7 +66,6 @@ class JWTAuthentication(BaseAuthentication):
             # Custom DECODE_JWT_TOKEN functions may still return a plain payload dict.
             credentials = JWTCredentials(header={}, payload=credentials)
 
-        # Always runs, so overriding DECODE_JWT_TOKEN or AUTHENTICATE_PAYLOAD keeps the claim checks.
         validate_payload(payload=credentials)
 
         result = authenticate_payload(payload=credentials, request=request)
