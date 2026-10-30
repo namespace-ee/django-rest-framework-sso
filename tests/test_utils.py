@@ -84,7 +84,7 @@ def test_authenticate_rejects_iat_before_last_issued_at(user):
     session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
     payload = _auth_payload(session_token, user, iat=int(last.timestamp()) - 1)
     with pytest.raises(AuthenticationFailed):
-        authenticate_payload(payload=payload)
+        authenticate_payload(credentials=payload)
 
 
 @pytest.mark.django_db
@@ -92,7 +92,7 @@ def test_authenticate_accepts_iat_equal_last_issued_at(user):
     last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=timezone.utc)
     session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
     payload = _auth_payload(session_token, user, iat=int(last.timestamp()))
-    authenticated_user, credentials = authenticate_payload(payload=payload)
+    authenticated_user, credentials = authenticate_payload(credentials=payload)
     assert authenticated_user == user
 
 
@@ -101,7 +101,7 @@ def test_authenticate_accepts_iat_after_last_issued_at(user):
     last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=timezone.utc)
     session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
     payload = _auth_payload(session_token, user, iat=int(last.timestamp()) + 1)
-    authenticated_user, credentials = authenticate_payload(payload=payload)
+    authenticated_user, credentials = authenticate_payload(credentials=payload)
     assert authenticated_user == user
 
 
@@ -109,7 +109,7 @@ def test_authenticate_accepts_iat_after_last_issued_at(user):
 def test_authenticate_skips_check_when_last_issued_at_is_none(user):
     session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=None)
     payload = _auth_payload(session_token, user, iat=None)
-    authenticated_user, credentials = authenticate_payload(payload=payload)
+    authenticated_user, credentials = authenticate_payload(credentials=payload)
     assert authenticated_user == user
 
 
@@ -119,7 +119,7 @@ def test_authenticate_rejects_payload_missing_iat(user):
     session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
     payload = _auth_payload(session_token, user, iat=None)
     with pytest.raises(AuthenticationFailed):
-        authenticate_payload(payload=payload)
+        authenticate_payload(credentials=payload)
 
 
 @pytest.mark.django_db
@@ -133,7 +133,7 @@ def test_authenticate_does_not_unrevoke_concurrently_revoked_token(user, monkeyp
         return original_save(self, *args, **kwargs)
 
     monkeypatch.setattr(SessionToken, "save", save_after_concurrent_revocation)
-    authenticated_user, credentials = authenticate_payload(payload=_auth_payload(session_token, user))
+    authenticated_user, credentials = authenticate_payload(credentials=_auth_payload(session_token, user))
     assert authenticated_user == user
     session_token.refresh_from_db()
     assert session_token.revoked_at == revoked_at
@@ -143,7 +143,9 @@ def test_authenticate_does_not_unrevoke_concurrently_revoked_token(user, monkeyp
 def test_authenticate_persists_request_attributes_and_last_used_at(user, api_factory):
     session_token = SessionToken.objects.create(user=user, created_by=user)
     request = api_factory.get("/", HTTP_USER_AGENT="test-agent", REMOTE_ADDR="10.1.2.3")
-    authenticated_user, credentials = authenticate_payload(payload=_auth_payload(session_token, user), request=request)
+    authenticated_user, credentials = authenticate_payload(
+        credentials=_auth_payload(session_token, user), request=request
+    )
     assert authenticated_user == user
     session_token.refresh_from_db()
     assert session_token.ip_address == "10.1.2.3"
@@ -157,7 +159,7 @@ def test_authenticate_skips_check_when_verify_disabled(user, monkeypatch):
     last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=timezone.utc)
     session_token = SessionToken.objects.create(user=user, created_by=user, last_issued_at=last)
     payload = _auth_payload(session_token, user, iat=int(last.timestamp()) - 100)
-    authenticated_user, credentials = authenticate_payload(payload=payload)
+    authenticated_user, credentials = authenticate_payload(credentials=payload)
     assert authenticated_user == user
 
 
@@ -172,7 +174,7 @@ def test_authenticate_skips_check_when_verify_disabled(user, monkeypatch):
 def test_authenticate_attaches_session_token_to_credentials(user, token, credentials_class):
     session_token = SessionToken.objects.create(user=user, created_by=user)
     credentials = _auth_payload(session_token, user, token=token)
-    authenticated_user, returned = authenticate_payload(payload=credentials)
+    authenticated_user, returned = authenticate_payload(credentials=credentials)
     assert authenticated_user == user
     assert type(returned) is credentials_class
     assert returned.session_token == session_token
@@ -184,7 +186,7 @@ def test_authenticate_attaches_session_token_to_credentials(user, token, credent
 def test_authenticate_without_session_verification_returns_plain_credentials(user, monkeypatch):
     monkeypatch.setattr(api_settings, "VERIFY_SESSION_TOKEN", False)
     session_token = SessionToken.objects.create(user=user, created_by=user)
-    authenticated_user, returned = authenticate_payload(payload=_auth_payload(session_token, user))
+    authenticated_user, returned = authenticate_payload(credentials=_auth_payload(session_token, user))
     assert authenticated_user == user
     assert type(returned) is JWTCredentials
 
@@ -207,7 +209,7 @@ def test_decode_leaves_claim_validation_to_validate_payload():
 
 @pytest.mark.parametrize("token_type", [claims.TOKEN_SESSION, claims.TOKEN_AUTHORIZATION])
 def test_validate_payload_accepts_known_token_types(token_type):
-    assert validate_payload(_base_payload(token_type=token_type)) is None
+    assert validate_payload(JWTCredentials(header={}, payload=_base_payload(token_type=token_type))) is None
 
 
 @pytest.mark.parametrize(
@@ -221,4 +223,4 @@ def test_validate_payload_accepts_known_token_types(token_type):
 )
 def test_validate_payload_rejects_invalid_claims(overrides, message):
     with pytest.raises(AuthenticationFailed, match=message):
-        validate_payload({**_base_payload(), **overrides})
+        validate_payload(JWTCredentials(header={}, payload={**_base_payload(), **overrides}))
