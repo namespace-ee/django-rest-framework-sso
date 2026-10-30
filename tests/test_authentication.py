@@ -5,7 +5,7 @@ from rest_framework.exceptions import AuthenticationFailed
 
 from rest_framework_sso import claims
 from rest_framework_sso.authentication import JWTAuthentication
-from rest_framework_sso.credentials import JWTCredentials, SessionTokenCredentials
+from rest_framework_sso.credentials import AuthorizationTokenCredentials, JWTCredentials, SessionTokenCredentials
 from rest_framework_sso.models import SessionToken
 from rest_framework_sso.settings import api_settings
 from rest_framework_sso.utils import encode_jwt_token
@@ -29,6 +29,26 @@ def test_credentials_is_read_only_mapping_over_payload():
         credentials.header = {}  # ty: ignore[invalid-assignment]
     with pytest.raises(TypeError):
         JWTCredentials({}, {})  # ty: ignore[missing-argument, too-many-positional-arguments]
+
+
+@pytest.mark.parametrize(
+    "kwargs, message",
+    [
+        ({"header": None, "payload": {}}, "header must be a dict, not NoneType"),
+        ({"header": {}, "payload": "claims"}, "payload must be a dict, not str"),
+    ],
+)
+def test_credentials_require_dict_header_and_payload(kwargs, message):
+    with pytest.raises(TypeError, match=message):
+        JWTCredentials(**kwargs)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("credentials_class", [SessionTokenCredentials, AuthorizationTokenCredentials])
+@pytest.mark.parametrize("session_token", [None, "00000000-0000-0000-0000-000000000001"])
+def test_verified_session_credentials_require_session_token(credentials_class, session_token):
+    with pytest.raises(TypeError, match="session_token must be a SessionToken"):
+        credentials_class(header={}, payload={}, session_token=session_token)
 
 
 @pytest.mark.django_db
