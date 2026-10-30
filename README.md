@@ -177,7 +177,8 @@ Requests that have been successfully authenticated with `JWTAuthentication` carr
 
 When the session was verified against the database (`VERIFY_SESSION_TOKEN`, enabled by default),
 `request.auth` is a `SessionTokenCredentials` subclass that also carries `session_token`, the
-`SessionToken` the token belongs to:
+`SessionToken` the token belongs to. Authorization tokens get the `AuthorizationTokenCredentials`
+subclass of it:
 
 ```python
 from rest_framework_sso.credentials import SessionTokenCredentials

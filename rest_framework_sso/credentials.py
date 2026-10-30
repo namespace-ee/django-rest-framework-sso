@@ -40,3 +40,10 @@ class SessionTokenCredentials(JWTCredentials):
     """
 
     session_token: SessionToken
+
+
+@dataclass(frozen=True, kw_only=True)
+class AuthorizationTokenCredentials(SessionTokenCredentials):
+    """
+    Session-verified credentials of an authorization token.
+    """
