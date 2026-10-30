@@ -5,6 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import exceptions
 from rest_framework.authentication import BaseAuthentication, get_authorization_header
 
+from rest_framework_sso.credentials import JWTCredentials, VerifiedSessionCredentials
 from rest_framework_sso.settings import api_settings
 
 logger = logging.getLogger(__name__)
@@ -63,7 +64,14 @@ class JWTAuthentication(BaseAuthentication):
 
         validate_payload(credentials=credentials)
 
-        return authenticate_payload(credentials=credentials, request=request)
+        result = authenticate_payload(credentials=credentials, request=request)
+        if not (isinstance(result, tuple) and len(result) == 2 and isinstance(result[1], JWTCredentials)):
+            raise TypeError("AUTHENTICATE_PAYLOAD must return a (user, JWTCredentials) tuple")
+        if api_settings.VERIFY_SESSION_TOKEN and not isinstance(result[1], VerifiedSessionCredentials):
+            raise TypeError(
+                "AUTHENTICATE_PAYLOAD must return VerifiedSessionCredentials when VERIFY_SESSION_TOKEN is on"
+            )
+        return result
 
     def authenticate_header(self, request):
         return api_settings.AUTHENTICATE_HEADER

@@ -3,7 +3,7 @@ from dataclasses import FrozenInstanceError
 import pytest
 from rest_framework.exceptions import AuthenticationFailed
 
-from rest_framework_sso import claims
+from rest_framework_sso import authentication, claims
 from rest_framework_sso.authentication import JWTAuthentication
 from rest_framework_sso.credentials import AuthorizationTokenCredentials, JWTCredentials, SessionTokenCredentials
 from rest_framework_sso.models import SessionToken
@@ -70,3 +70,30 @@ def test_authenticate_validates_payload(user, api_factory):
     request = api_factory.get("/", HTTP_AUTHORIZATION=f"JWT {token}")
     with pytest.raises(AuthenticationFailed, match="Session ID is missing."):
         JWTAuthentication().authenticate(request)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "result",
+    [
+        lambda user, credentials: user,
+        lambda user, credentials: (user, "garbage"),
+        lambda user, credentials: (user, credentials),
+    ],
+    ids=["user-only", "non-credentials", "unverified-credentials"],
+)
+def test_authenticate_rejects_invalid_authenticate_payload_result(user, api_factory, monkeypatch, result):
+    session_token = SessionToken.objects.create(user=user, created_by=user)
+    monkeypatch.setattr(
+        authentication, "authenticate_payload", lambda credentials, request=None: result(user, credentials)
+    )
+    with pytest.raises(TypeError, match="AUTHENTICATE_PAYLOAD must return"):
+        JWTAuthentication().authenticate(_request_with_token(api_factory, session_token, user))
+
+
+@pytest.mark.django_db
+def test_authenticate_accepts_unverified_credentials_without_session_verification(user, api_factory, monkeypatch):
+    monkeypatch.setattr(api_settings, "VERIFY_SESSION_TOKEN", False)
+    session_token = SessionToken.objects.create(user=user, created_by=user)
+    _, credentials = JWTAuthentication().authenticate(_request_with_token(api_factory, session_token, user))
+    assert type(credentials) is JWTCredentials
