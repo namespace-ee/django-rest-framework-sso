@@ -36,7 +36,7 @@ class SessionToken(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     revoked_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
-    objects = SessionTokenQuerySet.as_manager()
+    objects = SessionTokenQuerySet.as_manager()  # ty: ignore[missing-argument]
 
     class Meta:
         abstract = "rest_framework_sso" not in settings.INSTALLED_APPS
@@ -52,11 +52,11 @@ class SessionToken(models.Model):
         elif request.META.get("REMOTE_ADDR"):
             self.ip_address = request.META.get("REMOTE_ADDR").split(",")[0].strip()
         else:
-            self.ip_address = None
+            self.ip_address = None  # ty: ignore[invalid-assignment]
 
         if request.META.get("HTTP_USER_AGENT"):
             self.user_agent = request.META.get("HTTP_USER_AGENT")[:1000]
         else:
-            self.user_agent = ""
+            self.user_agent = ""  # ty: ignore[invalid-assignment]
 
-        self.version = getattr(request, "version", None)
+        self.version = getattr(request, "version", None)  # ty: ignore[invalid-assignment]

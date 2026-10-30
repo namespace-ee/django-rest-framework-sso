@@ -19,6 +19,7 @@ from rest_framework_sso.settings import api_settings
 if TYPE_CHECKING:
     from django.contrib.auth.base_user import AbstractBaseUser
     from django.contrib.auth.models import AbstractUser
+    from jwt.types import Options
     from rest_framework.request import Request
 
     from rest_framework_sso.models import SessionToken
@@ -121,7 +122,7 @@ def decode_jwt_token(token: str) -> JWTCredentials:
 
     public_key, key_id = get_public_key_and_key_id(issuer=unverified_issuer, key_id=unverified_key_id)
 
-    options = {
+    options: Options = {
         "verify_signature": api_settings.VERIFY_SIGNATURE,
         "verify_exp": api_settings.VERIFY_EXPIRATION,
         "verify_iss": api_settings.VERIFY_ISSUER,
@@ -183,7 +184,7 @@ def authenticate_payload(
             session_token.last_used_at = timezone.now()
             session_token.save(update_fields=update_fields)
             user = session_token.user
-        except SessionToken.DoesNotExist:
+        except SessionToken.DoesNotExist:  # ty: ignore[unresolved-attribute]
             raise exceptions.AuthenticationFailed(_("Invalid token."))
     else:
         try:

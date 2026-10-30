@@ -13,6 +13,7 @@ Uses **uv** for dependency management, virtual environments, and running all com
 ```bash
 uv run ruff check .           # Lint
 uv run ruff format .          # Format (use --check to verify)
+uv run ty check               # Type check
 uv run pytest tests/ -v       # Run tests
 uv build                      # Build package
 ```
@@ -38,7 +39,7 @@ uv build                      # Build package
 
 ## CI pipeline
 
-1. **Lint** - ruff check + ruff format --check
+1. **Lint** - ruff check + ruff format --check + ty check
 2. **Test** - pytest across the full Django/Python matrix
 3. **Build** - `uv build` (on release or workflow_dispatch)
 4. **Publish** - PyPI via OIDC trusted publishing (on GitHub release)
