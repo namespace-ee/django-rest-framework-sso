@@ -120,8 +120,9 @@ def authenticate_payload(credentials, request=None):
     return user, credentials
 ```
 
-A custom function that verifies the session itself should return `SessionTokenCredentials`
-so views can use `request.auth.session_token`:
+A custom function that verifies the session itself should return `SessionTokenCredentials` for
+session tokens and `AuthorizationTokenCredentials` for authorization tokens, so views can use
+`request.auth.session_token`:
 
 ```python
 from rest_framework_sso.credentials import SessionTokenCredentials
@@ -178,16 +179,20 @@ Requests that have been successfully authenticated with `JWTAuthentication` carr
 - `payload`: the verified JWT claims
 
 When the session was verified against the database (`VERIFY_SESSION_TOKEN`, enabled by default),
-`request.auth` is a `SessionTokenCredentials` subclass that also carries `session_token`, the
-`SessionToken` the token belongs to. Authorization tokens get the `AuthorizationTokenCredentials`
-subclass of it:
+`request.auth` is a `VerifiedSessionCredentials` subclass that also carries `session_token`, the
+`SessionToken` the token belongs to: `SessionTokenCredentials` for session tokens and
+`AuthorizationTokenCredentials` for authorization tokens. The two are siblings, so checking for one
+never matches the other:
 
 ```python
-from rest_framework_sso.credentials import SessionTokenCredentials
+from rest_framework_sso.credentials import VerifiedSessionCredentials
 
-if isinstance(request.auth, SessionTokenCredentials):
+if isinstance(request.auth, VerifiedSessionCredentials):
     session_token = request.auth.session_token
 ```
+
+With `VERIFY_SESSION_TOKEN` disabled, `request.auth` is a plain `JWTCredentials`; read the `token`
+claim to tell token types apart.
 
 `request.auth` is also a read-only mapping over the payload, so `request.auth.get(claims.USER_ID)`
 works as well. This data can be used in your API views/viewsets to handle permissions, for example:

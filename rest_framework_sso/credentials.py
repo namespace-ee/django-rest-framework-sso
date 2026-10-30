@@ -34,7 +34,7 @@ class JWTCredentials(Mapping):
 
 
 @dataclass(frozen=True, kw_only=True)
-class SessionTokenCredentials(JWTCredentials):
+class VerifiedSessionCredentials(JWTCredentials):
     """
     JWT credentials whose session was verified against ``session_token``.
     """
@@ -43,7 +43,14 @@ class SessionTokenCredentials(JWTCredentials):
 
 
 @dataclass(frozen=True, kw_only=True)
-class AuthorizationTokenCredentials(SessionTokenCredentials):
+class SessionTokenCredentials(VerifiedSessionCredentials):
+    """
+    Session-verified credentials of a session token.
+    """
+
+
+@dataclass(frozen=True, kw_only=True)
+class AuthorizationTokenCredentials(VerifiedSessionCredentials):
     """
     Session-verified credentials of an authorization token.
     """
