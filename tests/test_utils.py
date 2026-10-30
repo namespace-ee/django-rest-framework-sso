@@ -177,6 +177,7 @@ def test_authenticate_attaches_session_token_to_credentials(user, token, credent
     authenticated_user, returned = authenticate_payload(credentials=credentials)
     assert authenticated_user == user
     assert type(returned) is credentials_class
+    assert isinstance(returned, SessionTokenCredentials)
     assert returned.session_token == session_token
     assert returned.header == credentials.header
     assert returned.payload == credentials.payload

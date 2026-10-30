@@ -109,7 +109,7 @@ class ObtainAuthorizationTokenView(BaseAPIView):
                 session_token = SessionToken.objects.active().get(
                     pk=request.auth.get(claims.SESSION_ID), user=request.user
                 )
-            except SessionToken.DoesNotExist:
+            except SessionToken.DoesNotExist:  # ty: ignore[unresolved-attribute]
                 return Response({"detail": "Invalid token."}, status=status.HTTP_401_UNAUTHORIZED)
         else:
             session_token = (

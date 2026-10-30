@@ -27,6 +27,9 @@ jobs:
       - name: Ruff format check
         run: uv run ruff format --check .
 
+      - name: Type check
+        run: uv run ty check
+
   test:
     name: Test (Python ${{ matrix.python-version }}, Django ${{ matrix.django-version }})
     runs-on: ubuntu-latest

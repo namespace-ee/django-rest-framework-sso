@@ -26,9 +26,9 @@ def test_credentials_is_read_only_mapping_over_payload():
     assert dict(credentials) == {claims.USER_ID: 1}
     assert credentials.header == {claims.KEY_ID: "k"}
     with pytest.raises(FrozenInstanceError):
-        credentials.header = {}
+        credentials.header = {}  # ty: ignore[invalid-assignment]
     with pytest.raises(TypeError):
-        JWTCredentials({}, {})
+        JWTCredentials({}, {})  # ty: ignore[missing-argument, too-many-positional-arguments]
 
 
 @pytest.mark.django_db

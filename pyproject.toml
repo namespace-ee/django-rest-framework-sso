@@ -44,6 +44,7 @@ dev = [
     "pytest-django",
     "ruff",
     "time-machine>=3.2.0",
+    "ty>=0.0.95",
 ]
 
 [build-system]
