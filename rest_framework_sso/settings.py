@@ -11,6 +11,7 @@ DEFAULTS = {
     "CREATE_AUTHORIZATION_PAYLOAD": "rest_framework_sso.utils.create_authorization_payload",
     "ENCODE_JWT_TOKEN": "rest_framework_sso.utils.encode_jwt_token",
     "DECODE_JWT_TOKEN": "rest_framework_sso.utils.decode_jwt_token",
+    "VALIDATE_PAYLOAD": "rest_framework_sso.utils.validate_payload",
     "AUTHENTICATE_PAYLOAD": "rest_framework_sso.utils.authenticate_payload",
     "ENCODE_ALGORITHM": "RS256",
     "DECODE_ALGORITHMS": None,
@@ -39,6 +40,7 @@ IMPORT_STRINGS = (
     "CREATE_AUTHORIZATION_PAYLOAD",
     "ENCODE_JWT_TOKEN",
     "DECODE_JWT_TOKEN",
+    "VALIDATE_PAYLOAD",
     "AUTHENTICATE_PAYLOAD",
 )
 

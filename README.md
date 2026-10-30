@@ -128,6 +128,25 @@ REST_FRAMEWORK_SSO = {
 }
 ```
 
+Before `AUTHENTICATE_PAYLOAD` is called, `JWTAuthentication` always runs `VALIDATE_PAYLOAD`,
+which by default rejects tokens whose `token` claim is not `session` or `auth`, or that lack the
+`sid` or `uid` claim. These checks keep running when you replace `DECODE_JWT_TOKEN` or
+`AUTHENTICATE_PAYLOAD`. To change these rules, replace `VALIDATE_PAYLOAD` explicitly. A custom
+validator rejects a token by raising `AuthenticationFailed`; its return value is ignored. For example,
+a service with `VERIFY_SESSION_TOKEN` disabled that only accepts authorization tokens and does not
+need the session ID:
+
+```python
+from rest_framework import exceptions
+from rest_framework_sso import claims
+
+def validate_payload(payload):
+    if payload.get(claims.TOKEN) != claims.TOKEN_AUTHORIZATION:
+        raise exceptions.AuthenticationFailed(_('Only authorization tokens are accepted.'))
+    if not payload.get(claims.USER_ID):
+        raise exceptions.AuthenticationFailed(_('User ID is missing.'))
+```
+
 Enable JWT authentication in the `REST_FRAMEWORK` settings:
 
 ```python
@@ -212,6 +231,7 @@ REST_FRAMEWORK_SSO = {
     'CREATE_AUTHORIZATION_PAYLOAD': 'rest_framework_sso.utils.create_authorization_payload',
     'ENCODE_JWT_TOKEN': 'rest_framework_sso.utils.encode_jwt_token',
     'DECODE_JWT_TOKEN': 'rest_framework_sso.utils.decode_jwt_token',
+    'VALIDATE_PAYLOAD': 'rest_framework_sso.utils.validate_payload',
     'AUTHENTICATE_PAYLOAD': 'rest_framework_sso.utils.authenticate_payload',
 
     'ENCODE_ALGORITHM': 'RS256',

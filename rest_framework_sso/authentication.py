@@ -11,6 +11,7 @@ from rest_framework_sso.settings import api_settings
 logger = logging.getLogger(__name__)
 
 decode_jwt_token = api_settings.DECODE_JWT_TOKEN
+validate_payload = api_settings.VALIDATE_PAYLOAD
 authenticate_payload = api_settings.AUTHENTICATE_PAYLOAD
 
 
@@ -64,6 +65,8 @@ class JWTAuthentication(BaseAuthentication):
         if not isinstance(credentials, JWTCredentials):
             # Custom DECODE_JWT_TOKEN functions may still return a plain payload dict.
             credentials = JWTCredentials(header={}, payload=credentials)
+
+        validate_payload(payload=credentials)
 
         result = authenticate_payload(payload=credentials, request=request)
         if isinstance(result, tuple):

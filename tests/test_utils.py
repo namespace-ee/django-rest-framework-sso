@@ -8,7 +8,7 @@ from rest_framework_sso import claims
 from rest_framework_sso.credentials import JWTCredentials
 from rest_framework_sso.models import SessionToken
 from rest_framework_sso.settings import api_settings
-from rest_framework_sso.utils import authenticate_payload, decode_jwt_token, encode_jwt_token
+from rest_framework_sso.utils import authenticate_payload, decode_jwt_token, encode_jwt_token, validate_payload
 
 
 def _base_payload(token_type=claims.TOKEN_SESSION):
@@ -190,3 +190,29 @@ def test_decode_returns_credentials_with_header_and_payload():
     assert credentials.header[claims.KEY_ID]
     assert credentials.payload[claims.SESSION_ID] == payload[claims.SESSION_ID]
     assert credentials.session_token is None
+
+
+def test_decode_leaves_claim_validation_to_validate_payload():
+    payload = {claims.TOKEN: claims.TOKEN_SESSION}
+    credentials = decode_jwt_token(encode_jwt_token(payload=payload))
+    assert credentials.get(claims.SESSION_ID) is None
+    assert credentials.get(claims.USER_ID) is None
+
+
+@pytest.mark.parametrize("token_type", [claims.TOKEN_SESSION, claims.TOKEN_AUTHORIZATION])
+def test_validate_payload_accepts_known_token_types(token_type):
+    assert validate_payload(_base_payload(token_type=token_type)) is None
+
+
+@pytest.mark.parametrize(
+    "overrides, message",
+    [
+        ({claims.TOKEN: "bogus"}, "Unknown token type."),
+        ({claims.TOKEN: None}, "Unknown token type."),
+        ({claims.SESSION_ID: None}, "Session ID is missing."),
+        ({claims.USER_ID: None}, "User ID is missing."),
+    ],
+)
+def test_validate_payload_rejects_invalid_claims(overrides, message):
+    with pytest.raises(AuthenticationFailed, match=message):
+        validate_payload({**_base_payload(), **overrides})

@@ -1,6 +1,7 @@
 from dataclasses import FrozenInstanceError
 
 import pytest
+from rest_framework.exceptions import AuthenticationFailed
 
 from rest_framework_sso import authentication, claims
 from rest_framework_sso.authentication import JWTAuthentication
@@ -67,3 +68,11 @@ def test_legacy_decode_jwt_token_returning_dict(user, api_factory, monkeypatch):
     assert credentials.session_token == session_token
     assert credentials.header == {}
     assert credentials.get(claims.SESSION_ID) == str(session_token.pk)
+
+
+@pytest.mark.django_db
+def test_authenticate_validates_payload(user, api_factory):
+    token = encode_jwt_token(payload={claims.TOKEN: claims.TOKEN_SESSION, claims.USER_ID: user.pk})
+    request = api_factory.get("/", HTTP_AUTHORIZATION=f"JWT {token}")
+    with pytest.raises(AuthenticationFailed, match="Session ID is missing."):
+        JWTAuthentication().authenticate(request)
