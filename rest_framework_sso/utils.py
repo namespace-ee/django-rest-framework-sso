@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING, Any
 
 import jwt
 from django.contrib.auth import get_user_model
@@ -13,10 +16,16 @@ from rest_framework_sso.credentials import AuthorizationTokenCredentials, JWTCre
 from rest_framework_sso.keys import get_private_key_and_key_id, get_public_key_and_key_id
 from rest_framework_sso.settings import api_settings
 
+if TYPE_CHECKING:
+    from django.contrib.auth.base_user import AbstractBaseUser
+    from rest_framework.request import Request
+
+    from rest_framework_sso.models import SessionToken
+
 logger = logging.getLogger(__name__)
 
 
-def create_session_payload(session_token, user, **kwargs):
+def create_session_payload(session_token: SessionToken, user: AbstractBaseUser, **kwargs: Any) -> dict[str, Any]:
     return {
         claims.TOKEN: claims.TOKEN_SESSION,
         claims.SESSION_ID: session_token.pk,
@@ -27,7 +36,7 @@ def create_session_payload(session_token, user, **kwargs):
     }
 
 
-def create_authorization_payload(session_token, user, **kwargs):
+def create_authorization_payload(session_token: SessionToken, user: AbstractBaseUser, **kwargs: Any) -> dict[str, Any]:
     return {
         claims.TOKEN: claims.TOKEN_AUTHORIZATION,
         claims.SESSION_ID: session_token.pk,
@@ -38,7 +47,7 @@ def create_authorization_payload(session_token, user, **kwargs):
     }
 
 
-def encode_jwt_token(payload):
+def encode_jwt_token(payload: dict[str, Any]) -> str:
     if payload.get(claims.TOKEN) not in (claims.TOKEN_SESSION, claims.TOKEN_AUTHORIZATION):
         raise RuntimeError("Unknown token type")
 
@@ -88,7 +97,7 @@ def encode_jwt_token(payload):
     )
 
 
-def decode_jwt_token(token):
+def decode_jwt_token(token: str) -> JWTCredentials:
     unverified_header = jwt.get_unverified_header(token)
     unverified_claims = jwt.decode(
         token,
@@ -131,13 +140,14 @@ def decode_jwt_token(token):
     return JWTCredentials(header=unverified_header, payload=payload)
 
 
-def validate_payload(payload):
+def validate_payload(credentials: JWTCredentials) -> None:
     """
-    Validate the claims of a decoded token before it is authenticated.
+    Validate the claims of decoded credentials before they are authenticated.
 
     Raise ``AuthenticationFailed`` to reject the token; the return value is ignored.
     Runs regardless of custom ``DECODE_JWT_TOKEN`` and ``AUTHENTICATE_PAYLOAD`` functions.
     """
+    payload = credentials.payload
     if payload.get(claims.TOKEN) not in (claims.TOKEN_SESSION, claims.TOKEN_AUTHORIZATION):
         raise exceptions.AuthenticationFailed(_("Unknown token type."))
     if not payload.get(claims.SESSION_ID):
@@ -146,9 +156,12 @@ def validate_payload(payload):
         raise exceptions.AuthenticationFailed(_("User ID is missing."))
 
 
-def authenticate_payload(payload, request=None):
+def authenticate_payload(
+    credentials: JWTCredentials, request: Request | None = None
+) -> tuple[AbstractBaseUser, JWTCredentials]:
     from rest_framework_sso.models import SessionToken
 
+    payload = credentials.payload
     user_model = get_user_model()
 
     if api_settings.VERIFY_SESSION_TOKEN:
@@ -181,9 +194,9 @@ def authenticate_payload(payload, request=None):
         raise exceptions.AuthenticationFailed(_("User inactive or deleted."))
 
     if not api_settings.VERIFY_SESSION_TOKEN:
-        return user, payload
+        return user, credentials
     if payload.get(claims.TOKEN) == claims.TOKEN_AUTHORIZATION:
         credentials_class = AuthorizationTokenCredentials
     else:
         credentials_class = SessionTokenCredentials
-    return user, credentials_class(header=payload.header, payload=payload.payload, session_token=session_token)
+    return user, credentials_class(header=credentials.header, payload=payload, session_token=session_token)

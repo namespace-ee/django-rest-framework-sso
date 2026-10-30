@@ -3,7 +3,7 @@ from dataclasses import FrozenInstanceError
 import pytest
 from rest_framework.exceptions import AuthenticationFailed
 
-from rest_framework_sso import authentication, claims
+from rest_framework_sso import claims
 from rest_framework_sso.authentication import JWTAuthentication
 from rest_framework_sso.credentials import JWTCredentials, SessionTokenCredentials
 from rest_framework_sso.models import SessionToken
@@ -41,32 +41,6 @@ def test_authenticate_request_end_to_end(user, api_factory):
     assert credentials.session_token == session_token
     assert credentials.header[claims.KEY_ID]
     assert credentials.payload[claims.ISSUER] == api_settings.IDENTITY
-    assert credentials.get(claims.SESSION_ID) == str(session_token.pk)
-
-
-@pytest.mark.django_db
-def test_legacy_authenticate_payload_returning_only_user(user, api_factory, monkeypatch):
-    session_token = SessionToken.objects.create(user=user, created_by=user)
-    monkeypatch.setattr(authentication, "authenticate_payload", lambda payload, request=None: user)
-    request = _request_with_token(api_factory, session_token, user)
-    authenticated_user, credentials = JWTAuthentication().authenticate(request)
-    assert authenticated_user == user
-    assert type(credentials) is JWTCredentials
-    assert credentials.header[claims.KEY_ID]
-    assert credentials.get(claims.SESSION_ID) == str(session_token.pk)
-
-
-@pytest.mark.django_db
-def test_legacy_decode_jwt_token_returning_dict(user, api_factory, monkeypatch):
-    session_token = SessionToken.objects.create(user=user, created_by=user)
-    original_decode = authentication.decode_jwt_token
-    monkeypatch.setattr(authentication, "decode_jwt_token", lambda token: dict(original_decode(token=token)))
-    request = _request_with_token(api_factory, session_token, user)
-    authenticated_user, credentials = JWTAuthentication().authenticate(request)
-    assert authenticated_user == user
-    assert isinstance(credentials, SessionTokenCredentials)
-    assert credentials.session_token == session_token
-    assert credentials.header == {}
     assert credentials.get(claims.SESSION_ID) == str(session_token.pk)
 
 

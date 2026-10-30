@@ -102,13 +102,14 @@ REST_FRAMEWORK_SSO = {
 In order to get-or-create User accounts automatically within your microservice apps,
 you may need to write your custom JWT payload authentication function. It receives the
 decoded `JWTCredentials` and returns the user together with the credentials to expose
-in `request.auth` (returning only the user is still supported):
+in `request.auth`:
 
 ```python
 from django.contrib.auth import get_user_model
 from rest_framework_sso import claims
 
-def authenticate_payload(payload, request=None):
+def authenticate_payload(credentials, request=None):
+    payload = credentials.payload
     user_model = get_user_model()
     user, created = user_model.objects.get_or_create(
         service=payload.get(claims.ISSUER),
@@ -116,7 +117,7 @@ def authenticate_payload(payload, request=None):
     )
     if not user.is_active:
         raise exceptions.AuthenticationFailed(_('User inactive or deleted.'))
-    return user, payload
+    return user, credentials
 ```
 
 A custom function that verifies the session itself should return `SessionTokenCredentials`
@@ -125,7 +126,7 @@ so views can use `request.auth.session_token`:
 ```python
 from rest_framework_sso.credentials import SessionTokenCredentials
 
-return user, SessionTokenCredentials(header=payload.header, payload=payload.payload, session_token=session_token)
+return user, SessionTokenCredentials(header=credentials.header, payload=credentials.payload, session_token=session_token)
 ```
 
 Enable `authenticate_payload` function in `REST_FRAMEWORK_SSO` settings:
@@ -149,7 +150,8 @@ need the session ID:
 from rest_framework import exceptions
 from rest_framework_sso import claims
 
-def validate_payload(payload):
+def validate_payload(credentials):
+    payload = credentials.payload
     if payload.get(claims.TOKEN) != claims.TOKEN_AUTHORIZATION:
         raise exceptions.AuthenticationFailed(_('Only authorization tokens are accepted.'))
     if not payload.get(claims.USER_ID):
