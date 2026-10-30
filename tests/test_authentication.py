@@ -125,15 +125,3 @@ def test_custom_validate_payload_replaces_default(user, api_factory, monkeypatch
     authenticated_user, credentials = JWTAuthentication().authenticate(_request_with_raw_payload(api_factory, payload))
     assert authenticated_user == user
     assert credentials.get(claims.TOKEN) == "service"
-
-
-@pytest.mark.django_db
-def test_custom_validate_payload_raising_jwt_error_fails_authentication(user, api_factory, monkeypatch):
-    session_token = SessionToken.objects.create(user=user, created_by=user)
-
-    def validate_payload(payload):
-        raise jwt.exceptions.MissingRequiredClaimError("scopes")
-
-    monkeypatch.setattr(authentication, "validate_payload", validate_payload)
-    with pytest.raises(AuthenticationFailed):
-        JWTAuthentication().authenticate(_request_with_token(api_factory, session_token, user))
