@@ -195,8 +195,8 @@ if isinstance(request.auth, VerifiedSessionCredentials):
 With `VERIFY_SESSION_TOKEN` disabled, `request.auth` is a plain `JWTCredentials`; read the `token`
 claim to tell token types apart.
 
-`request.auth` is also a read-only mapping over the payload, so `request.auth.get(claims.USER_ID)`
-works as well. This data can be used in your API views/viewsets to handle permissions, for example:
+Read claims through `request.auth.payload`. This data can be used in your API views/viewsets to
+handle permissions, for example:
 
 ```python
 from rest_framework_sso import claims
@@ -209,8 +209,8 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         if not request.user.is_authenticated or not request.auth:
             return self.none()
         return User.objects.filter(
-            service=request.auth.get(claims.ISSUER),
-            external_id=request.auth.get(claims.USER_ID),
+            service=request.auth.payload.get(claims.ISSUER),
+            external_id=request.auth.payload.get(claims.USER_ID),
         )
 ```
 
