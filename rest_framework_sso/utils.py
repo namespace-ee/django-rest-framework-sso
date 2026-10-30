@@ -169,11 +169,6 @@ def authenticate_payload(payload, request=None):
             session_token.last_used_at = timezone.now()
             session_token.save(update_fields=update_fields)
             user = session_token.user
-            if payload.get(claims.TOKEN) == claims.TOKEN_AUTHORIZATION:
-                credentials_class = AuthorizationTokenCredentials
-            else:
-                credentials_class = SessionTokenCredentials
-            payload = credentials_class(header=payload.header, payload=payload.payload, session_token=session_token)
         except SessionToken.DoesNotExist:
             raise exceptions.AuthenticationFailed(_("Invalid token."))
     else:
@@ -185,4 +180,10 @@ def authenticate_payload(payload, request=None):
     if not user.is_active:
         raise exceptions.AuthenticationFailed(_("User inactive or deleted."))
 
-    return user, payload
+    if not api_settings.VERIFY_SESSION_TOKEN:
+        return user, payload
+    if payload.get(claims.TOKEN) == claims.TOKEN_AUTHORIZATION:
+        credentials_class = AuthorizationTokenCredentials
+    else:
+        credentials_class = SessionTokenCredentials
+    return user, credentials_class(header=payload.header, payload=payload.payload, session_token=session_token)
