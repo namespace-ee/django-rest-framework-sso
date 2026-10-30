@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from rest_framework_sso import claims
+from rest_framework_sso.credentials import VerifiedSessionCredentials
 from rest_framework_sso.models import SessionToken
 from rest_framework_sso.serializers import AuthorizationTokenSerializer, SessionTokenSerializer
 from rest_framework_sso.settings import api_settings
@@ -104,7 +105,9 @@ class ObtainAuthorizationTokenView(BaseAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        if hasattr(request.auth, "get") and request.auth.get(claims.SESSION_ID):
+        if isinstance(request.auth, VerifiedSessionCredentials):
+            session_token = request.auth.session_token
+        elif hasattr(request.auth, "get") and request.auth.get(claims.SESSION_ID):
             try:
                 session_token = SessionToken.objects.active().get(
                     pk=request.auth.get(claims.SESSION_ID), user=request.user

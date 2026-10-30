@@ -6,6 +6,7 @@ import time_machine
 from rest_framework.test import force_authenticate
 
 from rest_framework_sso import claims
+from rest_framework_sso.credentials import SessionTokenCredentials
 from rest_framework_sso.models import SessionToken
 from rest_framework_sso.utils import decode_jwt_token
 from rest_framework_sso.views import ObtainAuthorizationTokenView, ObtainSessionTokenView
@@ -105,3 +106,18 @@ def test_authorization_post_does_not_touch_last_issued_at(user, api_factory):
     assert response.status_code == 200
     session_token.refresh_from_db()
     assert session_token.last_issued_at == original_last_issued_at
+
+
+@pytest.mark.django_db
+def test_authorization_post_reuses_verified_session_token(user, api_factory, django_assert_num_queries):
+    session_token = SessionToken.objects.create(user=user, client_id="web", created_by=user)
+    credentials = SessionTokenCredentials(
+        header={}, payload={claims.SESSION_ID: str(session_token.pk)}, session_token=session_token
+    )
+    request = api_factory.post("/authorize/", data={}, format="json")
+    force_authenticate(request, user=user, token=credentials)
+    # Only the attribute update; the session token is not fetched again.
+    with django_assert_num_queries(1):
+        response = ObtainAuthorizationTokenView.as_view()(request)
+    assert response.status_code == 200
+    assert _decode(response)[claims.SESSION_ID] == str(session_token.pk)
