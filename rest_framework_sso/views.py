@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from rest_framework_sso import claims
-from rest_framework_sso.credentials import VerifiedSessionCredentials
+from rest_framework_sso.credentials import JWTCredentials, VerifiedSessionCredentials
 from rest_framework_sso.models import SessionToken
 from rest_framework_sso.serializers import AuthorizationTokenSerializer, SessionTokenSerializer
 from rest_framework_sso.settings import api_settings
@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 create_session_payload = api_settings.CREATE_SESSION_PAYLOAD
 create_authorization_payload = api_settings.CREATE_AUTHORIZATION_PAYLOAD
 encode_jwt_token = api_settings.ENCODE_JWT_TOKEN
-decode_jwt_token = api_settings.DECODE_JWT_TOKEN
 
 
 class BaseAPIView(APIView):
@@ -107,10 +106,10 @@ class ObtainAuthorizationTokenView(BaseAPIView):
 
         if isinstance(request.auth, VerifiedSessionCredentials):
             session_token = request.auth.session_token
-        elif hasattr(request.auth, "get") and request.auth.get(claims.SESSION_ID):
+        elif isinstance(request.auth, JWTCredentials) and request.auth.payload.get(claims.SESSION_ID):
             try:
                 session_token = SessionToken.objects.active().get(
-                    pk=request.auth.get(claims.SESSION_ID), user=request.user
+                    pk=request.auth.payload[claims.SESSION_ID], user=request.user
                 )
             except SessionToken.DoesNotExist:  # ty: ignore[unresolved-attribute]
                 return Response({"detail": "Invalid token."}, status=status.HTTP_401_UNAUTHORIZED)

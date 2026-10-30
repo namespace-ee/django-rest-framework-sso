@@ -6,7 +6,7 @@ import time_machine
 from rest_framework.test import force_authenticate
 
 from rest_framework_sso import claims
-from rest_framework_sso.credentials import SessionTokenCredentials
+from rest_framework_sso.credentials import JWTCredentials, SessionTokenCredentials
 from rest_framework_sso.models import SessionToken
 from rest_framework_sso.utils import decode_jwt_token
 from rest_framework_sso.views import ObtainAuthorizationTokenView, ObtainSessionTokenView
@@ -87,7 +87,9 @@ def test_authorization_post_does_not_unrevoke_concurrently_revoked_token(user, a
     revoked_at = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
     monkeypatch.setattr(SessionToken, "save", _save_with_concurrent_revocation(revoked_at))
     request = api_factory.post("/authorize/", data={}, format="json")
-    force_authenticate(request, user=user, token={claims.SESSION_ID: str(session_token.pk)})
+    force_authenticate(
+        request, user=user, token=JWTCredentials(header={}, payload={claims.SESSION_ID: str(session_token.pk)})
+    )
     response = ObtainAuthorizationTokenView.as_view()(request)
     assert response.status_code == 200
     session_token.refresh_from_db()
@@ -101,7 +103,9 @@ def test_authorization_post_does_not_touch_last_issued_at(user, api_factory):
         user=user, client_id="web", created_by=user, last_issued_at=original_last_issued_at
     )
     request = api_factory.post("/authorize/", data={}, format="json")
-    force_authenticate(request, user=user, token={claims.SESSION_ID: str(session_token.pk)})
+    force_authenticate(
+        request, user=user, token=JWTCredentials(header={}, payload={claims.SESSION_ID: str(session_token.pk)})
+    )
     response = ObtainAuthorizationTokenView.as_view()(request)
     assert response.status_code == 200
     session_token.refresh_from_db()
@@ -121,3 +125,16 @@ def test_authorization_post_reuses_verified_session_token(user, api_factory, dja
         response = ObtainAuthorizationTokenView.as_view()(request)
     assert response.status_code == 200
     assert _decode(response)[claims.SESSION_ID] == str(session_token.pk)
+
+
+@pytest.mark.django_db
+def test_authorization_post_rejects_revoked_session(user, api_factory):
+    session_token = SessionToken.objects.create(
+        user=user, client_id="web", created_by=user, revoked_at=datetime(2026, 1, 1, tzinfo=timezone.utc)
+    )
+    request = api_factory.post("/authorize/", data={}, format="json")
+    force_authenticate(
+        request, user=user, token=JWTCredentials(header={}, payload={claims.SESSION_ID: str(session_token.pk)})
+    )
+    response = ObtainAuthorizationTokenView.as_view()(request)
+    assert response.status_code == 401
