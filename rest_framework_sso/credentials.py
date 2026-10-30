@@ -3,6 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from django.core.exceptions import ValidationError
+
+from rest_framework_sso import claims
+
 if TYPE_CHECKING:
     from rest_framework_sso.models import SessionToken
 
@@ -40,6 +44,16 @@ class VerifiedSessionCredentials(JWTCredentials):
 
         if not isinstance(self.session_token, SessionToken):
             raise TypeError(f"session_token must be a SessionToken, not {type(self.session_token).__name__}")
+        opts = self.session_token._meta  # ty: ignore[unresolved-attribute]
+        try:
+            session_id = opts.pk.to_python(self.payload.get(claims.SESSION_ID))
+            user_id = opts.get_field("user").target_field.to_python(self.payload.get(claims.USER_ID))
+        except ValidationError:
+            session_id = user_id = None
+        if session_id != self.session_token.pk:
+            raise ValueError("session_token does not match the sid claim")
+        if user_id != self.session_token.user_id:
+            raise ValueError("session_token does not match the uid claim")
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -48,9 +62,19 @@ class SessionTokenCredentials(VerifiedSessionCredentials):
     Session-verified credentials of a session token.
     """
 
+    def __post_init__(self):
+        super().__post_init__()
+        if self.payload.get(claims.TOKEN) != claims.TOKEN_SESSION:
+            raise ValueError("SessionTokenCredentials requires the 'session' token type")
+
 
 @dataclass(frozen=True, kw_only=True)
 class AuthorizationTokenCredentials(VerifiedSessionCredentials):
     """
     Session-verified credentials of an authorization token.
     """
+
+    def __post_init__(self):
+        super().__post_init__()
+        if self.payload.get(claims.TOKEN) != claims.TOKEN_AUTHORIZATION:
+            raise ValueError("AuthorizationTokenCredentials requires the 'auth' token type")

@@ -23,7 +23,12 @@ def _decode(response):
 
 
 def _session_credentials(session_token, credentials_class=SessionTokenCredentials):
-    payload = {claims.SESSION_ID: str(session_token.pk)}
+    token = claims.TOKEN_AUTHORIZATION if credentials_class is AuthorizationTokenCredentials else claims.TOKEN_SESSION
+    payload = {
+        claims.TOKEN: token,
+        claims.SESSION_ID: str(session_token.pk),
+        claims.USER_ID: session_token.user_id,
+    }
     return credentials_class(header={}, payload=payload, session_token=session_token)
 
 

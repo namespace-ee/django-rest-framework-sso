@@ -197,8 +197,10 @@ def authenticate_payload(
 
     if not api_settings.VERIFY_SESSION_TOKEN:
         return user, credentials
-    if payload.get(claims.TOKEN) == claims.TOKEN_AUTHORIZATION:
+    if payload.get(claims.TOKEN) == claims.TOKEN_SESSION:
+        credentials_class = SessionTokenCredentials
+    elif payload.get(claims.TOKEN) == claims.TOKEN_AUTHORIZATION:
         credentials_class = AuthorizationTokenCredentials
     else:
-        credentials_class = SessionTokenCredentials
+        raise exceptions.AuthenticationFailed(_("Unknown token type."))
     return user, credentials_class(header=credentials.header, payload=payload, session_token=session_token)

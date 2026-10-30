@@ -48,6 +48,23 @@ def test_verified_session_credentials_require_session_token(credentials_class, s
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    "credentials_class, overrides, message",
+    [
+        (SessionTokenCredentials, {claims.TOKEN: claims.TOKEN_AUTHORIZATION}, "requires the 'session' token type"),
+        (AuthorizationTokenCredentials, {}, "requires the 'auth' token type"),
+        (SessionTokenCredentials, {claims.SESSION_ID: "00000000-0000-0000-0000-000000000000"}, "match the sid claim"),
+        (SessionTokenCredentials, {claims.USER_ID: 999}, "match the uid claim"),
+    ],
+)
+def test_verified_session_credentials_must_match_claims(user, credentials_class, overrides, message):
+    session_token = SessionToken.objects.create(user=user, created_by=user)
+    payload = {claims.TOKEN: claims.TOKEN_SESSION, claims.SESSION_ID: str(session_token.pk), claims.USER_ID: user.pk}
+    with pytest.raises(ValueError, match=message):
+        credentials_class(header={}, payload={**payload, **overrides}, session_token=session_token)
+
+
+@pytest.mark.django_db
 def test_authenticate_request_end_to_end(user, api_factory):
     session_token = SessionToken.objects.create(user=user, created_by=user)
     request = _request_with_token(api_factory, session_token, user)

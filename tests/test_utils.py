@@ -235,3 +235,10 @@ def test_validate_payload_accepts_known_token_types(token_type):
 def test_validate_payload_rejects_invalid_claims(overrides, message):
     with pytest.raises(AuthenticationFailed, match=message):
         validate_payload(JWTCredentials(header={}, payload={**_base_payload(), **overrides}))
+
+
+@pytest.mark.django_db
+def test_authenticate_rejects_unknown_token_type(user):
+    session_token = SessionToken.objects.create(user=user, created_by=user)
+    with pytest.raises(AuthenticationFailed, match="Unknown token type."):
+        authenticate_payload(credentials=_auth_payload(session_token, user, token="service"))
