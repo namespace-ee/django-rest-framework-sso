@@ -5,7 +5,12 @@ import time_machine
 from rest_framework.exceptions import AuthenticationFailed
 
 from rest_framework_sso import claims
-from rest_framework_sso.credentials import AuthorizationTokenCredentials, JWTCredentials, SessionTokenCredentials
+from rest_framework_sso.credentials import (
+    AuthorizationTokenCredentials,
+    JWTCredentials,
+    SessionTokenCredentials,
+    VerifiedSessionCredentials,
+)
 from rest_framework_sso.models import SessionToken
 from rest_framework_sso.settings import api_settings
 from rest_framework_sso.utils import authenticate_payload, decode_jwt_token, encode_jwt_token, validate_payload
@@ -163,6 +168,11 @@ def test_authenticate_skips_check_when_verify_disabled(user, monkeypatch):
     assert authenticated_user == user
 
 
+def test_token_credentials_are_siblings():
+    assert not issubclass(AuthorizationTokenCredentials, SessionTokenCredentials)
+    assert not issubclass(SessionTokenCredentials, AuthorizationTokenCredentials)
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "token, credentials_class",
@@ -177,7 +187,7 @@ def test_authenticate_attaches_session_token_to_credentials(user, token, credent
     authenticated_user, returned = authenticate_payload(credentials=credentials)
     assert authenticated_user == user
     assert type(returned) is credentials_class
-    assert isinstance(returned, SessionTokenCredentials)
+    assert isinstance(returned, VerifiedSessionCredentials)
     assert returned.session_token == session_token
     assert returned.header == credentials.header
     assert returned.payload == credentials.payload
