@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 import time_machine
+from django.core.exceptions import ImproperlyConfigured
 from rest_framework.exceptions import AuthenticationFailed
 
 from rest_framework_sso import claims
@@ -70,6 +71,30 @@ def test_caller_supplied_exp_preserved():
     payload[claims.ISSUED_AT] = caller_exp - timedelta(days=365)
     encode_jwt_token(payload=payload)
     assert payload[claims.EXPIRATION_TIME] == caller_exp
+
+
+def test_encode_rejects_unknown_token_type():
+    with pytest.raises(ValueError, match="Unknown token type"):
+        encode_jwt_token(payload=_base_payload(token_type="unknown"))
+
+
+def test_encode_requires_identity_for_issuer(monkeypatch):
+    monkeypatch.setattr(api_settings, "IDENTITY", None)
+    with pytest.raises(ImproperlyConfigured, match="IDENTITY must be specified"):
+        encode_jwt_token(payload=_base_payload())
+
+
+def test_encode_requires_an_audience_setting(monkeypatch):
+    monkeypatch.setattr(api_settings, "IDENTITY", None)
+    payload = {**_base_payload(), claims.ISSUER: "test-issuer"}
+    with pytest.raises(ImproperlyConfigured, match="SESSION_AUDIENCE, AUTHORIZATION_AUDIENCE or IDENTITY"):
+        encode_jwt_token(payload=payload)
+
+
+def test_encode_requires_a_private_key_for_the_issuer():
+    payload = {**_base_payload(), claims.ISSUER: "unknown-issuer"}
+    with pytest.raises(ImproperlyConfigured, match="Private key for specified issuer was not found"):
+        encode_jwt_token(payload=payload)
 
 
 def _auth_payload(session_token, user, iat=None, token=claims.TOKEN_SESSION):
