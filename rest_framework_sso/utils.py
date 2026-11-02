@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def create_session_payload(session_token: SessionToken, user: AbstractUser, **kwargs: Any) -> dict[str, Any]:
+def create_session_payload(*, session_token: SessionToken, user: AbstractUser, **kwargs: Any) -> dict[str, Any]:
     return {
         claims.TOKEN: claims.TOKEN_SESSION,
         claims.SESSION_ID: session_token.pk,
@@ -38,7 +38,7 @@ def create_session_payload(session_token: SessionToken, user: AbstractUser, **kw
     }
 
 
-def create_authorization_payload(session_token: SessionToken, user: AbstractUser, **kwargs: Any) -> dict[str, Any]:
+def create_authorization_payload(*, session_token: SessionToken, user: AbstractUser, **kwargs: Any) -> dict[str, Any]:
     return {
         claims.TOKEN: claims.TOKEN_AUTHORIZATION,
         claims.SESSION_ID: session_token.pk,
@@ -49,7 +49,7 @@ def create_authorization_payload(session_token: SessionToken, user: AbstractUser
     }
 
 
-def encode_jwt_token(payload: dict[str, Any]) -> str:
+def encode_jwt_token(*, payload: dict[str, Any]) -> str:
     if payload.get(claims.TOKEN) not in (claims.TOKEN_SESSION, claims.TOKEN_AUTHORIZATION):
         raise RuntimeError("Unknown token type")
 
@@ -99,7 +99,7 @@ def encode_jwt_token(payload: dict[str, Any]) -> str:
     )
 
 
-def decode_jwt_token(token: str) -> JWTCredentials:
+def decode_jwt_token(*, token: str) -> JWTCredentials:
     unverified_header = jwt.get_unverified_header(token)
     unverified_claims = jwt.decode(
         token,
@@ -142,7 +142,7 @@ def decode_jwt_token(token: str) -> JWTCredentials:
     return JWTCredentials(header=unverified_header, payload=payload)
 
 
-def validate_payload(credentials: JWTCredentials) -> None:
+def validate_payload(*, credentials: JWTCredentials) -> None:
     """
     Validate the claims of decoded credentials before they are authenticated.
 
@@ -159,7 +159,7 @@ def validate_payload(credentials: JWTCredentials) -> None:
 
 
 def authenticate_payload(
-    credentials: JWTCredentials, request: Request | None = None
+    *, credentials: JWTCredentials, request: Request | None = None
 ) -> tuple[AbstractBaseUser, JWTCredentials]:
     from rest_framework_sso.models import SessionToken
 
