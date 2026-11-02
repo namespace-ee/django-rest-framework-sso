@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
+import jwt
 import pytest
 import time_machine
 from django.core.exceptions import ImproperlyConfigured
@@ -25,6 +26,21 @@ def _base_payload(token_type=claims.TOKEN_SESSION):
     }
 
 
+def _encoded_claims(payload):
+    return jwt.decode(encode_jwt_token(payload=payload), options={"verify_signature": False})
+
+
+def _epoch(value):
+    return int(value.timestamp())
+
+
+def test_encode_leaves_the_callers_payload_unchanged():
+    payload = _base_payload()
+    original = dict(payload)
+    encode_jwt_token(payload=payload)
+    assert payload == original
+
+
 def test_caller_supplied_iat_preserved():
     iat = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
     payload = _base_payload()
@@ -35,23 +51,24 @@ def test_caller_supplied_iat_preserved():
 
 def test_fallback_iat_truncated_to_whole_seconds():
     fixed = datetime(2026, 5, 13, 10, 30, 45, 123456, tzinfo=timezone.utc)
-    payload = _base_payload()
     with time_machine.travel(fixed, tick=False):
-        encode_jwt_token(payload=payload)
-    assert payload[claims.ISSUED_AT] == fixed.replace(microsecond=0)
-    assert payload[claims.ISSUED_AT].microsecond == 0
+        encoded = _encoded_claims(_base_payload())
+    assert encoded[claims.ISSUED_AT] == _epoch(fixed.replace(microsecond=0))
 
 
 def test_session_exp_derived_from_iat():
-    payload = _base_payload(claims.TOKEN_SESSION)
-    encode_jwt_token(payload=payload)
-    assert payload[claims.EXPIRATION_TIME] - payload[claims.ISSUED_AT] == api_settings.SESSION_EXPIRATION
+    encoded = _encoded_claims(_base_payload(claims.TOKEN_SESSION))
+    assert (
+        encoded[claims.EXPIRATION_TIME] - encoded[claims.ISSUED_AT] == api_settings.SESSION_EXPIRATION.total_seconds()
+    )
 
 
 def test_authorization_exp_derived_from_iat():
-    payload = _base_payload(claims.TOKEN_AUTHORIZATION)
-    encode_jwt_token(payload=payload)
-    assert payload[claims.EXPIRATION_TIME] - payload[claims.ISSUED_AT] == api_settings.AUTHORIZATION_EXPIRATION
+    encoded = _encoded_claims(_base_payload(claims.TOKEN_AUTHORIZATION))
+    assert (
+        encoded[claims.EXPIRATION_TIME] - encoded[claims.ISSUED_AT]
+        == api_settings.AUTHORIZATION_EXPIRATION.total_seconds()
+    )
 
 
 def test_caller_supplied_iat_drives_exp():
@@ -60,8 +77,8 @@ def test_caller_supplied_iat_drives_exp():
     payload = _base_payload(claims.TOKEN_SESSION)
     payload[claims.ISSUED_AT] = caller_iat
     with time_machine.travel(fallback_now, tick=False):
-        encode_jwt_token(payload=payload)
-    assert payload[claims.EXPIRATION_TIME] == caller_iat + api_settings.SESSION_EXPIRATION
+        encoded = _encoded_claims(payload)
+    assert encoded[claims.EXPIRATION_TIME] == _epoch(caller_iat + api_settings.SESSION_EXPIRATION)
 
 
 def test_caller_supplied_exp_preserved():
