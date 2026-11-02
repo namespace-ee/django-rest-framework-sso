@@ -1,3 +1,4 @@
+import functools
 import logging
 import os
 
@@ -16,6 +17,18 @@ def read_key_file(file_name):
     else:
         file_path = os.path.abspath(file_name)
     return pem.parse_file(file_path)
+
+
+@functools.cache
+def load_private_key(file_name):
+    key_data = next((o.as_bytes() for o in read_key_file(file_name=file_name) if isinstance(o, pem.PrivateKey)), None)
+    return None if key_data is None else load_pem_private_key(key_data, password=None)
+
+
+@functools.cache
+def load_public_key(file_name):
+    key_data = next((o.as_bytes() for o in read_key_file(file_name=file_name) if isinstance(o, pem.PublicKey)), None)
+    return None if key_data is None else load_pem_public_key(key_data)
 
 
 def get_key_id(file_name):
@@ -41,21 +54,15 @@ def get_key_file_name(keys, issuer, key_id=None):
 
 def get_private_key_and_key_id(issuer, key_id=None):
     file_name = get_key_file_name(keys=api_settings.PRIVATE_KEYS, issuer=issuer, key_id=key_id)
-    file_data = read_key_file(file_name=file_name)
-    try:
-        key_data = next(o.as_bytes() for o in file_data if isinstance(o, pem.PrivateKey))
-    except StopIteration:
+    key = load_private_key(file_name=file_name)
+    if key is None:
         raise InvalidKeyError(f"No private key found for {issuer=} {key_id=}")
-    key = load_pem_private_key(key_data, password=None)
     return key, get_key_id(file_name=file_name)
 
 
 def get_public_key_and_key_id(issuer, key_id=None):
     file_name = get_key_file_name(keys=api_settings.PUBLIC_KEYS, issuer=issuer, key_id=key_id)
-    file_data = read_key_file(file_name=file_name)
-    try:
-        key_data = next(o.as_bytes() for o in file_data if isinstance(o, pem.PublicKey))
-    except StopIteration:
+    key = load_public_key(file_name=file_name)
+    if key is None:
         raise InvalidKeyError(f"No public key found for {issuer=} {key_id=}")
-    key = load_pem_public_key(key_data)
     return key, get_key_id(file_name=file_name)
