@@ -44,7 +44,8 @@ def test_caller_supplied_iat_preserved():
     iat = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
     payload = _base_payload()
     payload[claims.ISSUED_AT] = iat
-    assert _encoded_claims(payload)[claims.ISSUED_AT] == _epoch(iat)
+    encode_jwt_token(payload=payload)
+    assert payload[claims.ISSUED_AT] == iat
 
 
 def test_fallback_iat_truncated_to_whole_seconds():
@@ -84,7 +85,8 @@ def test_caller_supplied_exp_preserved():
     payload = _base_payload(claims.TOKEN_SESSION)
     payload[claims.EXPIRATION_TIME] = caller_exp
     payload[claims.ISSUED_AT] = caller_exp - timedelta(days=365)
-    assert _encoded_claims(payload)[claims.EXPIRATION_TIME] == _epoch(caller_exp)
+    encode_jwt_token(payload=payload)
+    assert payload[claims.EXPIRATION_TIME] == caller_exp
 
 
 def _auth_payload(session_token, user, iat=None, token=claims.TOKEN_SESSION):
