@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import jwt
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ImproperlyConfigured
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -51,13 +52,13 @@ def create_authorization_payload(*, session_token: SessionToken, user: AbstractU
 
 def encode_jwt_token(*, payload: dict[str, Any]) -> str:
     if payload.get(claims.TOKEN) not in (claims.TOKEN_SESSION, claims.TOKEN_AUTHORIZATION):
-        raise RuntimeError("Unknown token type")
+        raise ValueError("Unknown token type")
 
     if not payload.get(claims.ISSUER):
         if api_settings.IDENTITY is not None:
             payload[claims.ISSUER] = api_settings.IDENTITY
         else:
-            raise RuntimeError("IDENTITY must be specified in settings")
+            raise ImproperlyConfigured("IDENTITY must be specified in settings")
 
     if not payload.get(claims.AUDIENCE):
         if payload.get(claims.TOKEN) == claims.TOKEN_SESSION and api_settings.SESSION_AUDIENCE is not None:
@@ -69,7 +70,9 @@ def encode_jwt_token(*, payload: dict[str, Any]) -> str:
         elif api_settings.IDENTITY is not None:
             payload[claims.AUDIENCE] = [api_settings.IDENTITY]
         else:
-            raise RuntimeError("SESSION_AUDIENCE must be specified in settings")
+            raise ImproperlyConfigured(
+                "SESSION_AUDIENCE, AUTHORIZATION_AUDIENCE or IDENTITY must be specified in settings"
+            )
 
     if not payload.get(claims.ISSUED_AT):
         payload[claims.ISSUED_AT] = timezone.now().replace(microsecond=0)
@@ -84,7 +87,7 @@ def encode_jwt_token(*, payload: dict[str, Any]) -> str:
             payload[claims.EXPIRATION_TIME] = payload[claims.ISSUED_AT] + api_settings.AUTHORIZATION_EXPIRATION
 
     if payload[claims.ISSUER] not in api_settings.PRIVATE_KEYS:
-        raise RuntimeError("Private key for specified issuer was not found in settings")
+        raise ImproperlyConfigured("Private key for specified issuer was not found in settings")
 
     private_key, key_id = get_private_key_and_key_id(issuer=payload[claims.ISSUER])
 
