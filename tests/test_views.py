@@ -19,7 +19,7 @@ def _post_session(api_factory, data):
 
 def _decode(response):
     body = json.loads(response.rendered_content)
-    return decode_jwt_token(body["token"])
+    return decode_jwt_token(token=body["token"])
 
 
 def _session_credentials(session_token, credentials_class=SessionTokenCredentials):

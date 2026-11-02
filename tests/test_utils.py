@@ -204,7 +204,7 @@ def test_authenticate_without_session_verification_returns_plain_credentials(use
 
 def test_decode_returns_credentials_with_header_and_payload():
     payload = _base_payload()
-    credentials = decode_jwt_token(encode_jwt_token(payload=payload))
+    credentials = decode_jwt_token(token=encode_jwt_token(payload=payload))
     assert isinstance(credentials, JWTCredentials)
     assert credentials.header[claims.ALGORITHM] == api_settings.ENCODE_ALGORITHM
     assert credentials.header[claims.KEY_ID]
@@ -213,14 +213,14 @@ def test_decode_returns_credentials_with_header_and_payload():
 
 def test_decode_leaves_claim_validation_to_validate_payload():
     payload = {claims.TOKEN: claims.TOKEN_SESSION}
-    credentials = decode_jwt_token(encode_jwt_token(payload=payload))
+    credentials = decode_jwt_token(token=encode_jwt_token(payload=payload))
     assert credentials.payload.get(claims.SESSION_ID) is None
     assert credentials.payload.get(claims.USER_ID) is None
 
 
 @pytest.mark.parametrize("token_type", [claims.TOKEN_SESSION, claims.TOKEN_AUTHORIZATION])
 def test_validate_payload_accepts_known_token_types(token_type):
-    assert validate_payload(JWTCredentials(header={}, payload=_base_payload(token_type=token_type))) is None
+    assert validate_payload(credentials=JWTCredentials(header={}, payload=_base_payload(token_type=token_type))) is None
 
 
 @pytest.mark.parametrize(
@@ -234,4 +234,4 @@ def test_validate_payload_accepts_known_token_types(token_type):
 )
 def test_validate_payload_rejects_invalid_claims(overrides, message):
     with pytest.raises(AuthenticationFailed, match=message):
-        validate_payload(JWTCredentials(header={}, payload={**_base_payload(), **overrides}))
+        validate_payload(credentials=JWTCredentials(header={}, payload={**_base_payload(), **overrides}))

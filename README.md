@@ -78,7 +78,7 @@ Add the `account` keyword argument to the `create_authorization_payload` functio
 ```python
 from rest_framework_sso import claims
 
-def create_authorization_payload(session_token, user, account, **kwargs):
+def create_authorization_payload(*, session_token, user, account, **kwargs):
     return {
         claims.TOKEN: claims.TOKEN_AUTHORIZATION,
         claims.SESSION_ID: session_token.pk,
@@ -108,7 +108,7 @@ in `request.auth`:
 from django.contrib.auth import get_user_model
 from rest_framework_sso import claims
 
-def authenticate_payload(credentials, request=None):
+def authenticate_payload(*, credentials, request=None):
     payload = credentials.payload
     user_model = get_user_model()
     user, created = user_model.objects.get_or_create(
@@ -152,7 +152,7 @@ need the session ID:
 from rest_framework import exceptions
 from rest_framework_sso import claims
 
-def validate_payload(credentials):
+def validate_payload(*, credentials):
     payload = credentials.payload
     if payload.get(claims.TOKEN) != claims.TOKEN_AUTHORIZATION:
         raise exceptions.AuthenticationFailed(_('Only authorization tokens are accepted.'))
