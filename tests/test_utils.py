@@ -201,6 +201,15 @@ def test_authenticate_persists_request_attributes_and_last_used_at(user, api_fac
 
 
 @pytest.mark.django_db
+def test_authenticate_records_remote_addr_not_forwarded_for(user, api_factory):
+    session_token = SessionToken.objects.create(user=user, created_by=user)
+    request = api_factory.get("/", REMOTE_ADDR="10.1.2.3", HTTP_X_FORWARDED_FOR="203.0.113.9")
+    authenticate_payload(credentials=_auth_payload(session_token, user), request=request)
+    session_token.refresh_from_db()
+    assert session_token.ip_address == "10.1.2.3"
+
+
+@pytest.mark.django_db
 def test_authenticate_skips_check_when_verify_disabled(user, monkeypatch):
     monkeypatch.setattr(api_settings, "VERIFY_TOKEN_ISSUED_AT", False)
     last = datetime(2026, 5, 13, 10, 0, 0, tzinfo=timezone.utc)
