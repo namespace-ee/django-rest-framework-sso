@@ -1,3 +1,5 @@
+from unittest import mock
+
 import pem
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from django.test import TestCase
@@ -127,3 +129,16 @@ class TestGetPublicKeyAndKeyId(TestCase):
         public_key, key_id = keys.get_public_key_and_key_id(issuer="test-issuer", key_id="test-1024")
         self.assertIsInstance(public_key, RSAPublicKey)
         self.assertEqual(key_id, "test-1024")
+
+
+class TestKeyCache(TestCase):
+    def setUp(self):
+        keys.load_private_key.cache_clear()
+        keys.load_public_key.cache_clear()
+
+    def test_repeated_lookups_parse_the_key_file_once(self):
+        with mock.patch.object(keys.pem, "parse_file", wraps=keys.pem.parse_file) as parse_file:
+            for _ in range(3):
+                keys.get_public_key_and_key_id(issuer="test-issuer")
+                keys.get_private_key_and_key_id(issuer="test-issuer")
+        self.assertEqual(parse_file.call_count, 2)
