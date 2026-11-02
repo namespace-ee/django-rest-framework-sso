@@ -15,10 +15,6 @@ from rest_framework_sso.settings import api_settings
 
 logger = logging.getLogger(__name__)
 
-create_session_payload = api_settings.CREATE_SESSION_PAYLOAD
-create_authorization_payload = api_settings.CREATE_AUTHORIZATION_PAYLOAD
-encode_jwt_token = api_settings.ENCODE_JWT_TOKEN
-
 
 class BaseAPIView(APIView):
     """
@@ -83,12 +79,12 @@ class ObtainSessionTokenView(BaseAPIView):
             session_token = SessionToken(user=user, client_id=client_id, created_by=user)
         session_token.update_attributes(request=request)
         session_token.last_issued_at = timezone.now().replace(microsecond=0)
-        payload = create_session_payload(session_token=session_token, user=user)
+        payload = api_settings.CREATE_SESSION_PAYLOAD(session_token=session_token, user=user)
         if session_token._state.adding:
             session_token.save()
         else:
             session_token.save(update_fields=["ip_address", "user_agent", "version", "last_issued_at"])
-        jwt_token = encode_jwt_token(payload=payload)
+        jwt_token = api_settings.ENCODE_JWT_TOKEN(payload=payload)
         return Response({"token": jwt_token})
 
 
@@ -110,10 +106,10 @@ class ObtainAuthorizationTokenView(BaseAPIView):
         session_token = request.auth.session_token
         session_token.update_attributes(request=request)
         session_token.save(update_fields=["ip_address", "user_agent", "version"])
-        payload = create_authorization_payload(
+        payload = api_settings.CREATE_AUTHORIZATION_PAYLOAD(
             session_token=session_token, user=request.user, **serializer.validated_data
         )
-        jwt_token = encode_jwt_token(payload=payload)
+        jwt_token = api_settings.ENCODE_JWT_TOKEN(payload=payload)
         return Response({"token": jwt_token})
 
 

@@ -9,10 +9,6 @@ from rest_framework_sso.settings import api_settings
 
 logger = logging.getLogger(__name__)
 
-decode_jwt_token = api_settings.DECODE_JWT_TOKEN
-validate_payload = api_settings.VALIDATE_PAYLOAD
-authenticate_payload = api_settings.AUTHENTICATE_PAYLOAD
-
 
 class JWTAuthentication(BaseAuthentication):
     """
@@ -48,7 +44,7 @@ class JWTAuthentication(BaseAuthentication):
             raise exceptions.AuthenticationFailed(msg)
 
         try:
-            credentials = decode_jwt_token(token=token)
+            credentials = api_settings.DECODE_JWT_TOKEN(token=token)
         except jwt.exceptions.ExpiredSignatureError:
             msg = _("Signature has expired.")
             raise exceptions.AuthenticationFailed(msg)
@@ -61,9 +57,9 @@ class JWTAuthentication(BaseAuthentication):
         except jwt.exceptions.InvalidTokenError:
             raise exceptions.AuthenticationFailed()
 
-        validate_payload(credentials=credentials)
+        api_settings.VALIDATE_PAYLOAD(credentials=credentials)
 
-        return authenticate_payload(credentials=credentials, request=request)
+        return api_settings.AUTHENTICATE_PAYLOAD(credentials=credentials, request=request)
 
     def authenticate_header(self, request):
         return api_settings.AUTHENTICATE_HEADER
