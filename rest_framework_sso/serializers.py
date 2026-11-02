@@ -4,12 +4,7 @@ from django.contrib.auth import authenticate
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
-from rest_framework_sso.settings import api_settings
-
 logger = logging.getLogger(__name__)
-
-create_authorization_payload = api_settings.CREATE_AUTHORIZATION_PAYLOAD
-encode_jwt_token = api_settings.ENCODE_JWT_TOKEN
 
 
 class SessionTokenSerializer(serializers.Serializer):

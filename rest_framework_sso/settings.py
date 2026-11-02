@@ -4,8 +4,6 @@ from django.conf import settings
 from django.test.signals import setting_changed
 from rest_framework.settings import APISettings
 
-USER_SETTINGS = getattr(settings, "REST_FRAMEWORK_SSO", None)
-
 DEFAULTS = {
     "CREATE_SESSION_PAYLOAD": "rest_framework_sso.utils.create_session_payload",
     "CREATE_AUTHORIZATION_PAYLOAD": "rest_framework_sso.utils.create_authorization_payload",
@@ -44,14 +42,25 @@ IMPORT_STRINGS = (
     "AUTHENTICATE_PAYLOAD",
 )
 
-api_settings = APISettings(USER_SETTINGS, DEFAULTS, IMPORT_STRINGS)
+
+class SSOSettings(APISettings):
+    """
+    ``REST_FRAMEWORK_SSO`` settings, read lazily and reloaded in place so every module sees overrides.
+    """
+
+    @property
+    def user_settings(self):
+        if not hasattr(self, "_user_settings"):
+            self._user_settings = getattr(settings, "REST_FRAMEWORK_SSO", {})
+        return self._user_settings
 
 
-def reload_api_settings(*args, **kwargs):
-    global api_settings
-    setting, value = kwargs["setting"], kwargs["value"]
+api_settings = SSOSettings(defaults=DEFAULTS, import_strings=IMPORT_STRINGS)
+
+
+def reload_api_settings(*, setting, **kwargs):
     if setting == "REST_FRAMEWORK_SSO":
-        api_settings = APISettings(value, DEFAULTS, IMPORT_STRINGS)
+        api_settings.reload()
 
 
 setting_changed.connect(reload_api_settings)
