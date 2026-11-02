@@ -50,6 +50,7 @@ def create_authorization_payload(*, session_token: SessionToken, user: AbstractU
 
 
 def encode_jwt_token(*, payload: dict[str, Any]) -> str:
+    payload = dict(payload)
     if payload.get(claims.TOKEN) not in (claims.TOKEN_SESSION, claims.TOKEN_AUTHORIZATION):
         raise RuntimeError("Unknown token type")
 
