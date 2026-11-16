@@ -28,25 +28,20 @@ def read_key_file(file_name):
     return pem.parse_file(file_path)
 
 
-def _load_key(file_name, pem_type, loader):
-    try:
-        key_data = next((o.as_bytes() for o in read_key_file(file_name=file_name) if isinstance(o, pem_type)), None)
-        key = None if key_data is None else loader(key_data)
-    except (OSError, ValueError, TypeError) as e:
-        raise KeyLoadError(f"Unable to load {pem_type.__name__} from key file {file_name!r}: {e}") from e
-    if key is None:
-        raise KeyLoadError(f"No {pem_type.__name__} found in key file {file_name!r}")
-    return key
-
-
 @functools.cache
 def load_private_key(file_name):
-    return _load_key(file_name, pem.PrivateKey, lambda data: load_pem_private_key(data, password=None))
+    key_data = next((o.as_bytes() for o in read_key_file(file_name=file_name) if isinstance(o, pem.PrivateKey)), None)
+    if key_data is None:
+        raise KeyLoadError(f"No private key found in key file {file_name!r}")
+    return load_pem_private_key(key_data, password=None)
 
 
 @functools.cache
 def load_public_key(file_name):
-    return _load_key(file_name, pem.PublicKey, load_pem_public_key)
+    key_data = next((o.as_bytes() for o in read_key_file(file_name=file_name) if isinstance(o, pem.PublicKey)), None)
+    if key_data is None:
+        raise KeyLoadError(f"No public key found in key file {file_name!r}")
+    return load_pem_public_key(key_data)
 
 
 def get_key_id(file_name):
