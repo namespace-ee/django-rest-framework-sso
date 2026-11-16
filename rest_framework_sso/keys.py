@@ -30,18 +30,18 @@ def read_key_file(file_name):
 
 @functools.cache
 def load_private_key(file_name):
-    key_data = next((o.as_bytes() for o in read_key_file(file_name=file_name) if isinstance(o, pem.PrivateKey)), None)
-    if key_data is None:
-        raise KeyLoadError(f"No private key found in key file {file_name!r}")
-    return load_pem_private_key(key_data, password=None)
+    for obj in read_key_file(file_name=file_name):
+        if isinstance(obj, pem.PrivateKey):
+            return load_pem_private_key(obj.as_bytes(), password=None)
+    raise KeyLoadError(f"No private key found in key file {file_name!r}")
 
 
 @functools.cache
 def load_public_key(file_name):
-    key_data = next((o.as_bytes() for o in read_key_file(file_name=file_name) if isinstance(o, pem.PublicKey)), None)
-    if key_data is None:
-        raise KeyLoadError(f"No public key found in key file {file_name!r}")
-    return load_pem_public_key(key_data)
+    for obj in read_key_file(file_name=file_name):
+        if isinstance(obj, pem.PublicKey):
+            return load_pem_public_key(obj.as_bytes())
+    raise KeyLoadError(f"No public key found in key file {file_name!r}")
 
 
 def get_key_id(file_name):
