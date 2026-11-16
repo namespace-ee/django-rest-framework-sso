@@ -4,7 +4,7 @@ from unittest import mock
 import pem
 import pytest
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import dsa
+from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from django.test import TestCase
 from jwt.exceptions import InvalidKeyError
@@ -211,17 +211,52 @@ def test_load_key_by_file_layout(key_store, layout, has_private, has_public):
                 load_key(file_name="key.pem")
 
 
-def test_load_key_rejects_key_types_unsupported_by_pyjwt(key_store):
-    dsa_key = dsa.generate_private_key(key_size=2048)
+def _write_key(path, private_key):
     enc = serialization.Encoding.PEM
-    (key_store / "dsa.pem").write_bytes(
-        dsa_key.private_bytes(enc, serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
-        + dsa_key.public_key().public_bytes(enc, serialization.PublicFormat.SubjectPublicKeyInfo)
+    path.write_bytes(
+        private_key.private_bytes(enc, serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
+        + private_key.public_key().public_bytes(enc, serialization.PublicFormat.SubjectPublicKeyInfo)
     )
-    with pytest.raises(KeyLoadError, match="Unsupported private key type DSAPrivateKey in key file 'dsa.pem'"):
-        keys.load_private_key(file_name="dsa.pem")
-    with pytest.raises(KeyLoadError, match="Unsupported public key type DSAPublicKey in key file 'dsa.pem'"):
-        keys.load_public_key(file_name="dsa.pem")
+
+
+@pytest.mark.parametrize(
+    "key_type, encode_algorithm, decode_algorithms, private_ok, public_ok",
+    [
+        ("rsa", "RS256", None, True, True),
+        ("rsa", "PS256", None, True, True),
+        ("rsa", "ES256", None, False, False),
+        ("rsa", "ES256", ["ES256", "RS256"], False, True),
+        ("rsa", "RS256", ["ES256"], True, False),
+        ("rsa", "HS256", None, False, False),
+        ("ec", "ES256", None, True, True),
+        ("ec", "RS256", None, False, False),
+        ("dsa", "RS256", None, False, False),
+    ],
+)
+def test_load_key_must_match_configured_algorithms(
+    key_store, monkeypatch, key_type, encode_algorithm, decode_algorithms, private_ok, public_ok
+):
+    monkeypatch.setattr(api_settings, "ENCODE_ALGORITHM", encode_algorithm)
+    monkeypatch.setattr(api_settings, "DECODE_ALGORITHMS", decode_algorithms)
+    generate = {
+        "rsa": lambda: rsa.generate_private_key(public_exponent=65537, key_size=2048),
+        "ec": lambda: ec.generate_private_key(ec.SECP256R1()),
+        "dsa": lambda: dsa.generate_private_key(key_size=2048),
+    }[key_type]
+    _write_key(key_store / "key.pem", generate())
+    for load_key, ok in [(keys.load_private_key, private_ok), (keys.load_public_key, public_ok)]:
+        if ok:
+            load_key(file_name="key.pem")
+        else:
+            with pytest.raises(KeyLoadError, match="in key file 'key.pem' does not match"):
+                load_key(file_name="key.pem")
+
+
+def test_load_key_propagates_unknown_algorithm(key_store, monkeypatch):
+    monkeypatch.setattr(api_settings, "ENCODE_ALGORITHM", "XX256")
+    (key_store / "key.pem").write_bytes((KEYS_DIR / "test-2048.pem").read_bytes())
+    with pytest.raises(NotImplementedError):
+        keys.load_private_key(file_name="key.pem")
 
 
 def test_load_key_propagates_file_errors(key_store):
