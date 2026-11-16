@@ -1,11 +1,21 @@
+import pathlib
+from typing import get_args
 from unittest import mock
 
 import pem
+import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import dsa
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from django.test import TestCase
+from jwt.algorithms import AllowedPrivateKeys, AllowedPublicKeys
 from jwt.exceptions import InvalidKeyError
 
 from rest_framework_sso import keys
+from rest_framework_sso.exceptions import KeyLoadError
+from rest_framework_sso.settings import api_settings
+
+KEYS_DIR = pathlib.Path(__file__).parent / "keys"
 
 
 class TestReadKeyFile(TestCase):
@@ -142,3 +152,92 @@ class TestKeyCache(TestCase):
                 keys.get_public_key_and_key_id(issuer="test-issuer")
                 keys.get_private_key_and_key_id(issuer="test-issuer")
         self.assertEqual(parse_file.call_count, 2)
+
+
+@pytest.fixture
+def key_store(tmp_path, monkeypatch):
+    monkeypatch.setattr(api_settings, "KEY_STORE_ROOT", str(tmp_path))
+    keys.load_private_key.cache_clear()
+    keys.load_public_key.cache_clear()
+    yield tmp_path
+    keys.load_private_key.cache_clear()
+    keys.load_public_key.cache_clear()
+
+
+def _pem_sections():
+    private_key = keys.load_pem_private_key((KEYS_DIR / "test-2048.pem").read_bytes(), password=None)
+    public_key = private_key.public_key()
+    enc = serialization.Encoding.PEM
+    return {
+        "private": private_key.private_bytes(enc, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()),
+        "public": public_key.public_bytes(enc, serialization.PublicFormat.SubjectPublicKeyInfo),
+        "rsa-private": private_key.private_bytes(
+            enc, serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption()
+        ),
+        "rsa-public": public_key.public_bytes(enc, serialization.PublicFormat.PKCS1),
+        "certificate": b"-----BEGIN CERTIFICATE-----\nbm90IGEgY2VydGlmaWNhdGU=\n-----END CERTIFICATE-----\n",
+        "garbage": b"not a pem file\n",
+    }
+
+
+@pytest.mark.parametrize(
+    "layout, has_private, has_public",
+    [
+        (["private", "public"], True, True),
+        (["public", "private"], True, True),
+        (["private"], True, False),
+        (["public"], False, True),
+        (["rsa-private", "rsa-public"], True, True),
+        (["certificate", "private", "garbage", "public"], True, True),
+        (["certificate"], False, False),
+        (["garbage"], False, False),
+        ([], False, False),
+    ],
+    ids=lambda v: "+".join(v) or "empty" if isinstance(v, list) else None,
+)
+def test_load_key_by_file_layout(key_store, layout, has_private, has_public):
+    sections = _pem_sections()
+    (key_store / "key.pem").write_bytes(b"".join(sections[name] for name in layout))
+    for load_key, key_class, expected, name in [
+        (keys.load_private_key, RSAPrivateKey, has_private, "private"),
+        (keys.load_public_key, RSAPublicKey, has_public, "public"),
+    ]:
+        if expected:
+            assert isinstance(load_key(file_name="key.pem"), key_class)
+        else:
+            with pytest.raises(KeyLoadError, match=f"No {name} key found in key file 'key.pem'"):
+                load_key(file_name="key.pem")
+
+
+def test_pyjwt_key_types_match_pyjwt():
+    assert keys.PYJWT_PRIVATE_KEY_TYPES == get_args(AllowedPrivateKeys)
+    assert keys.PYJWT_PUBLIC_KEY_TYPES == get_args(AllowedPublicKeys)
+
+
+def test_load_key_rejects_key_types_unsupported_by_pyjwt(key_store):
+    dsa_key = dsa.generate_private_key(key_size=2048)
+    enc = serialization.Encoding.PEM
+    (key_store / "dsa.pem").write_bytes(
+        dsa_key.private_bytes(enc, serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
+        + dsa_key.public_key().public_bytes(enc, serialization.PublicFormat.SubjectPublicKeyInfo)
+    )
+    with pytest.raises(KeyLoadError, match="DSAPrivateKey in key file 'dsa.pem' is not supported by PyJWT"):
+        keys.load_private_key(file_name="dsa.pem")
+    with pytest.raises(KeyLoadError, match="DSAPublicKey in key file 'dsa.pem' is not supported by PyJWT"):
+        keys.load_public_key(file_name="dsa.pem")
+
+
+def test_load_key_propagates_file_errors(key_store):
+    with pytest.raises(FileNotFoundError):
+        keys.load_public_key(file_name="missing.pem")
+    (key_store / "corrupt.pem").write_text("-----BEGIN PUBLIC KEY-----\nbm90IGEga2V5\n-----END PUBLIC KEY-----\n")
+    with pytest.raises(ValueError):
+        keys.load_public_key(file_name="corrupt.pem")
+
+
+def test_load_key_failure_is_not_cached(key_store):
+    (key_store / "test-2048.pem").write_text("")
+    with pytest.raises(KeyLoadError):
+        keys.load_public_key(file_name="test-2048.pem")
+    (key_store / "test-2048.pem").write_bytes((KEYS_DIR / "test-2048.pem").read_bytes())
+    assert isinstance(keys.load_public_key(file_name="test-2048.pem"), RSAPublicKey)

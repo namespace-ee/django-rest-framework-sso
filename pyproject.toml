@@ -31,7 +31,7 @@ dependencies = [
     "djangorestframework",
     "cryptography",
     "pem",
-    "PyJWT>=2.0",
+    "PyJWT>=2.15.0",
 ]
 
 [project.urls]
