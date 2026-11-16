@@ -4,6 +4,7 @@ from unittest import mock
 import pem
 import pytest
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import dsa
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from django.test import TestCase
 from jwt.exceptions import InvalidKeyError
@@ -208,6 +209,19 @@ def test_load_key_by_file_layout(key_store, layout, has_private, has_public):
         else:
             with pytest.raises(KeyLoadError, match=f"No {name} key found in key file 'key.pem'"):
                 load_key(file_name="key.pem")
+
+
+def test_load_key_rejects_key_types_unsupported_by_pyjwt(key_store):
+    dsa_key = dsa.generate_private_key(key_size=2048)
+    enc = serialization.Encoding.PEM
+    (key_store / "dsa.pem").write_bytes(
+        dsa_key.private_bytes(enc, serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
+        + dsa_key.public_key().public_bytes(enc, serialization.PublicFormat.SubjectPublicKeyInfo)
+    )
+    with pytest.raises(KeyLoadError, match="Unsupported private key type DSAPrivateKey in key file 'dsa.pem'"):
+        keys.load_private_key(file_name="dsa.pem")
+    with pytest.raises(KeyLoadError, match="Unsupported public key type DSAPublicKey in key file 'dsa.pem'"):
+        keys.load_public_key(file_name="dsa.pem")
 
 
 def test_load_key_propagates_file_errors(key_store):
