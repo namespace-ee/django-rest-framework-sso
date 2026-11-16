@@ -9,6 +9,7 @@ from django.test import TestCase
 from jwt.exceptions import InvalidKeyError
 
 from rest_framework_sso import keys
+from rest_framework_sso.exceptions import KeyLoadError
 from rest_framework_sso.settings import api_settings
 
 KEYS_DIR = pathlib.Path(__file__).parent / "keys"
@@ -205,7 +206,7 @@ def test_load_key_by_file_layout(key_store, layout, has_private, has_public):
         if expected:
             assert isinstance(load_key(file_name="key.pem"), key_class)
         else:
-            with pytest.raises(keys.KeyLoadError, match=f"No {name} key found in key file 'key.pem'"):
+            with pytest.raises(KeyLoadError, match=f"No {name} key found in key file 'key.pem'"):
                 load_key(file_name="key.pem")
 
 
@@ -219,7 +220,7 @@ def test_load_key_propagates_file_errors(key_store):
 
 def test_load_key_failure_is_not_cached(key_store):
     (key_store / "test-2048.pem").write_text("")
-    with pytest.raises(keys.KeyLoadError):
+    with pytest.raises(KeyLoadError):
         keys.load_public_key(file_name="test-2048.pem")
     (key_store / "test-2048.pem").write_bytes((KEYS_DIR / "test-2048.pem").read_bytes())
     assert isinstance(keys.load_public_key(file_name="test-2048.pem"), RSAPublicKey)

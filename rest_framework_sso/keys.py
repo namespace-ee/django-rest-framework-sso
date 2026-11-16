@@ -4,20 +4,12 @@ import os
 
 import pem
 from cryptography.hazmat.primitives.serialization import load_pem_private_key, load_pem_public_key
-from django.core.exceptions import ImproperlyConfigured
 from jwt.exceptions import InvalidKeyError
 
+from rest_framework_sso.exceptions import KeyLoadError
 from rest_framework_sso.settings import api_settings
 
 logger = logging.getLogger(__name__)
-
-
-class KeyLoadError(ImproperlyConfigured):
-    """A configured key file could not be loaded.
-
-    Deliberately not an InvalidKeyError: that one means the token names an unknown issuer or key id (HTTP 401),
-    while this one is a server misconfiguration and must surface as HTTP 500.
-    """
 
 
 def read_key_file(file_name):
