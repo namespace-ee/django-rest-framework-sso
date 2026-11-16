@@ -272,7 +272,7 @@ requires-dist = [
     { name = "django" },
     { name = "djangorestframework" },
     { name = "pem" },
-    { name = "pyjwt", specifier = ">=2.12" },
+    { name = "pyjwt", specifier = ">=2.15.0" },
 ]
 
 [package.metadata.requires-dev]
