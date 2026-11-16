@@ -1,9 +1,10 @@
 from dataclasses import FrozenInstanceError
 
+import jwt
 import pytest
 from rest_framework.exceptions import AuthenticationFailed
 
-from rest_framework_sso import claims
+from rest_framework_sso import claims, keys
 from rest_framework_sso.authentication import JWTAuthentication
 from rest_framework_sso.credentials import AuthorizationTokenCredentials, JWTCredentials, SessionTokenCredentials
 from rest_framework_sso.models import SessionToken
@@ -65,4 +66,34 @@ def test_authenticate_validates_payload(user, api_factory):
     token = encode_jwt_token(payload={claims.TOKEN: claims.TOKEN_SESSION, claims.USER_ID: user.pk})
     request = api_factory.get("/", HTTP_AUTHORIZATION=f"JWT {token}")
     with pytest.raises(AuthenticationFailed, match="Session ID is missing."):
+        JWTAuthentication().authenticate(request)
+
+
+@pytest.fixture
+def broken_key_store(tmp_path, monkeypatch):
+    """Point KEY_STORE_ROOT at an empty dir: issuer and key ids stay configured, but their files fail to load."""
+    monkeypatch.setattr(api_settings, "KEY_STORE_ROOT", str(tmp_path))
+    keys.load_public_key.cache_clear()
+    yield tmp_path
+    keys.load_public_key.cache_clear()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("content", [None, "", "-----BEGIN PUBLIC KEY-----\nbm90IGEga2V5\n-----END PUBLIC KEY-----\n"])
+def test_authenticate_raises_key_load_error_for_configured_key(user, api_factory, broken_key_store, content):
+    session_token = SessionToken.objects.create(user=user, created_by=user)
+    request = _request_with_token(api_factory, session_token, user)
+    if content is not None:
+        (broken_key_store / "test-2048.pem").write_text(content)
+    with pytest.raises(keys.KeyLoadError):
+        JWTAuthentication().authenticate(request)
+
+
+@pytest.mark.django_db
+def test_authenticate_rejects_unknown_key_id_with_401(user, api_factory):
+    private_key, _ = keys.get_private_key_and_key_id(issuer=api_settings.IDENTITY)
+    payload = {claims.ISSUER: api_settings.IDENTITY, claims.TOKEN: claims.TOKEN_SESSION, claims.USER_ID: user.pk}
+    token = jwt.encode(payload, private_key, algorithm="RS256", headers={claims.KEY_ID: "unknown-key"})
+    request = api_factory.get("/", HTTP_AUTHORIZATION=f"JWT {token}")
+    with pytest.raises(AuthenticationFailed, match="Unauthorized token signing key."):
         JWTAuthentication().authenticate(request)

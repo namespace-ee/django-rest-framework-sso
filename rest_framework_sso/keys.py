@@ -4,11 +4,20 @@ import os
 
 import pem
 from cryptography.hazmat.primitives.serialization import load_pem_private_key, load_pem_public_key
+from django.core.exceptions import ImproperlyConfigured
 from jwt.exceptions import InvalidKeyError
 
 from rest_framework_sso.settings import api_settings
 
 logger = logging.getLogger(__name__)
+
+
+class KeyLoadError(ImproperlyConfigured):
+    """A configured key file could not be loaded.
+
+    Deliberately not an InvalidKeyError: that one means the token names an unknown issuer or key id (HTTP 401),
+    while this one is a server misconfiguration and must surface as HTTP 500.
+    """
 
 
 def read_key_file(file_name):
@@ -19,16 +28,25 @@ def read_key_file(file_name):
     return pem.parse_file(file_path)
 
 
+def _load_key(file_name, pem_type, loader):
+    try:
+        key_data = next((o.as_bytes() for o in read_key_file(file_name=file_name) if isinstance(o, pem_type)), None)
+        key = None if key_data is None else loader(key_data)
+    except (OSError, ValueError, TypeError) as e:
+        raise KeyLoadError(f"Unable to load {pem_type.__name__} from key file {file_name!r}: {e}") from e
+    if key is None:
+        raise KeyLoadError(f"No {pem_type.__name__} found in key file {file_name!r}")
+    return key
+
+
 @functools.cache
 def load_private_key(file_name):
-    key_data = next((o.as_bytes() for o in read_key_file(file_name=file_name) if isinstance(o, pem.PrivateKey)), None)
-    return None if key_data is None else load_pem_private_key(key_data, password=None)
+    return _load_key(file_name, pem.PrivateKey, lambda data: load_pem_private_key(data, password=None))
 
 
 @functools.cache
 def load_public_key(file_name):
-    key_data = next((o.as_bytes() for o in read_key_file(file_name=file_name) if isinstance(o, pem.PublicKey)), None)
-    return None if key_data is None else load_pem_public_key(key_data)
+    return _load_key(file_name, pem.PublicKey, load_pem_public_key)
 
 
 def get_key_id(file_name):
@@ -54,15 +72,9 @@ def get_key_file_name(keys, issuer, key_id=None):
 
 def get_private_key_and_key_id(issuer, key_id=None):
     file_name = get_key_file_name(keys=api_settings.PRIVATE_KEYS, issuer=issuer, key_id=key_id)
-    key = load_private_key(file_name=file_name)
-    if key is None:
-        raise InvalidKeyError(f"No private key found for {issuer=} {key_id=}")
-    return key, get_key_id(file_name=file_name)
+    return load_private_key(file_name=file_name), get_key_id(file_name=file_name)
 
 
 def get_public_key_and_key_id(issuer, key_id=None):
     file_name = get_key_file_name(keys=api_settings.PUBLIC_KEYS, issuer=issuer, key_id=key_id)
-    key = load_public_key(file_name=file_name)
-    if key is None:
-        raise InvalidKeyError(f"No public key found for {issuer=} {key_id=}")
-    return key, get_key_id(file_name=file_name)
+    return load_public_key(file_name=file_name), get_key_id(file_name=file_name)
