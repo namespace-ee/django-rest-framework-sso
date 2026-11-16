@@ -4,10 +4,13 @@ import functools
 import logging
 import os
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING
 
-import jwt
 import pem
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
+from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PrivateKey, Ed448PublicKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.serialization import load_pem_private_key, load_pem_public_key
 from jwt.exceptions import InvalidKeyError
 
@@ -15,11 +18,13 @@ from rest_framework_sso.exceptions import KeyLoadError
 from rest_framework_sso.settings import api_settings
 
 if TYPE_CHECKING:
-    from cryptography.hazmat.primitives.asymmetric.types import PrivateKeyTypes, PublicKeyTypes
     from jwt.algorithms import AllowedPrivateKeys, AllowedPublicKeys
-    from typing_extensions import TypeIs
 
 logger = logging.getLogger(__name__)
+
+# Key types PyJWT supports at all (jwt.algorithms.AllowedPrivateKeys / AllowedPublicKeys)
+PYJWT_PRIVATE_KEY_TYPES = (RSAPrivateKey, EllipticCurvePrivateKey, Ed25519PrivateKey, Ed448PrivateKey)
+PYJWT_PUBLIC_KEY_TYPES = (RSAPublicKey, EllipticCurvePublicKey, Ed25519PublicKey, Ed448PublicKey)
 
 
 def read_key_file(file_name: str) -> list[pem.AbstractPEMObject]:
@@ -35,9 +40,8 @@ def load_private_key(file_name: str) -> AllowedPrivateKeys:
     for obj in read_key_file(file_name=file_name):
         if isinstance(obj, pem.PrivateKey):
             key = load_pem_private_key(obj.as_bytes(), password=None)
-            algorithms = [api_settings.ENCODE_ALGORITHM]
-            if not is_key_for_algorithms(key, algorithms):
-                raise KeyLoadError(f"{type(key).__name__} in key file {file_name!r} does not match {algorithms}")
+            if not isinstance(key, PYJWT_PRIVATE_KEY_TYPES):
+                raise KeyLoadError(f"{type(key).__name__} in key file {file_name!r} is not supported by PyJWT")
             return key
     raise KeyLoadError(f"No private key found in key file {file_name!r}")
 
@@ -47,26 +51,10 @@ def load_public_key(file_name: str) -> AllowedPublicKeys:
     for obj in read_key_file(file_name=file_name):
         if isinstance(obj, pem.PublicKey):
             key = load_pem_public_key(obj.as_bytes())
-            algorithms = api_settings.DECODE_ALGORITHMS or [api_settings.ENCODE_ALGORITHM]
-            if not is_key_for_algorithms(key, algorithms):
-                raise KeyLoadError(f"{type(key).__name__} in key file {file_name!r} does not match {algorithms}")
+            if not isinstance(key, PYJWT_PUBLIC_KEY_TYPES):
+                raise KeyLoadError(f"{type(key).__name__} in key file {file_name!r} is not supported by PyJWT")
             return key
     raise KeyLoadError(f"No public key found in key file {file_name!r}")
-
-
-@overload
-def is_key_for_algorithms(key: PrivateKeyTypes, algorithms: Sequence[str]) -> TypeIs[AllowedPrivateKeys]: ...
-@overload
-def is_key_for_algorithms(key: PublicKeyTypes, algorithms: Sequence[str]) -> TypeIs[AllowedPublicKeys]: ...
-def is_key_for_algorithms(key: PrivateKeyTypes | PublicKeyTypes, algorithms: Sequence[str]) -> bool:
-    """Whether the key can be used with at least one of the given JWT algorithms."""
-    for algorithm in algorithms:
-        try:
-            jwt.get_algorithm_by_name(algorithm).check_crypto_key_type(key)
-        except (InvalidKeyError, ValueError):
-            continue
-        return True
-    return False
 
 
 def get_key_id(file_name: str) -> str:
