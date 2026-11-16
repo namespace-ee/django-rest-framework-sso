@@ -3,6 +3,7 @@ from unittest import mock
 
 import pem
 import pytest
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from django.test import TestCase
 from jwt.exceptions import InvalidKeyError
@@ -163,21 +164,49 @@ def _corrupt_pem(label):
     return f"-----BEGIN {label}-----\nbm90IGEga2V5\n-----END {label}-----\n"
 
 
-@pytest.mark.parametrize("load_key", [keys.load_private_key, keys.load_public_key])
-@pytest.mark.parametrize("content", ["", "not a pem file"], ids=["empty", "no-pem-block"])
-def test_load_key_raises_key_load_error_without_pem_block(key_store, load_key, content):
-    (key_store / "broken.pem").write_text(content)
-    with pytest.raises(keys.KeyLoadError, match="found in key file 'broken.pem'") as exc_info:
-        load_key(file_name="broken.pem")
-    assert not isinstance(exc_info.value, InvalidKeyError)
+def _pem_sections():
+    private_key = keys.load_pem_private_key((KEYS_DIR / "test-2048.pem").read_bytes(), password=None)
+    public_key = private_key.public_key()
+    enc = serialization.Encoding.PEM
+    return {
+        "private": private_key.private_bytes(enc, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()),
+        "public": public_key.public_bytes(enc, serialization.PublicFormat.SubjectPublicKeyInfo),
+        "rsa-private": private_key.private_bytes(
+            enc, serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption()
+        ),
+        "rsa-public": public_key.public_bytes(enc, serialization.PublicFormat.PKCS1),
+        "certificate": b"-----BEGIN CERTIFICATE-----\nbm90IGEgY2VydGlmaWNhdGU=\n-----END CERTIFICATE-----\n",
+        "garbage": b"not a pem file\n",
+    }
 
 
-def test_load_key_raises_key_load_error_for_missing_key_type(key_store):
-    public_only = "".join(str(o) for o in pem.parse_file(KEYS_DIR / "test-2048.pem") if isinstance(o, pem.PublicKey))
-    (key_store / "public-only.pem").write_text(public_only)
-    assert isinstance(keys.load_public_key(file_name="public-only.pem"), RSAPublicKey)
-    with pytest.raises(keys.KeyLoadError, match="No private key found in key file 'public-only.pem'"):
-        keys.load_private_key(file_name="public-only.pem")
+@pytest.mark.parametrize(
+    "layout, has_private, has_public",
+    [
+        (["private", "public"], True, True),
+        (["public", "private"], True, True),
+        (["private"], True, False),
+        (["public"], False, True),
+        (["rsa-private", "rsa-public"], True, True),
+        (["certificate", "private", "garbage", "public"], True, True),
+        (["certificate"], False, False),
+        (["garbage"], False, False),
+        ([], False, False),
+    ],
+    ids=lambda v: "+".join(v) or "empty" if isinstance(v, list) else None,
+)
+def test_load_key_by_file_layout(key_store, layout, has_private, has_public):
+    sections = _pem_sections()
+    (key_store / "key.pem").write_bytes(b"".join(sections[name] for name in layout))
+    for load_key, key_class, expected, name in [
+        (keys.load_private_key, RSAPrivateKey, has_private, "private"),
+        (keys.load_public_key, RSAPublicKey, has_public, "public"),
+    ]:
+        if expected:
+            assert isinstance(load_key(file_name="key.pem"), key_class)
+        else:
+            with pytest.raises(keys.KeyLoadError, match=f"No {name} key found in key file 'key.pem'"):
+                load_key(file_name="key.pem")
 
 
 def test_load_key_propagates_file_errors(key_store):
