@@ -41,6 +41,11 @@ class VerifiedSessionCredentials(JWTCredentials):
         if not isinstance(self.session_token, SessionToken):
             raise TypeError(f"session_token must be a SessionToken, not {type(self.session_token).__name__}")
 
+    @property
+    def user(self):
+        """The user of the verified session."""
+        return self.session_token.user
+
 
 @dataclass(frozen=True, kw_only=True)
 class SessionTokenCredentials(VerifiedSessionCredentials):

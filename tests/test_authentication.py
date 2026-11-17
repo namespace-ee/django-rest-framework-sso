@@ -55,6 +55,7 @@ def test_authenticate_request_end_to_end(user, api_factory):
     assert authenticated_user == user
     assert isinstance(credentials, SessionTokenCredentials)
     assert credentials.session_token == session_token
+    assert credentials.user == user
     assert credentials.header[claims.KEY_ID]
     assert credentials.payload[claims.ISSUER] == api_settings.IDENTITY
     assert credentials.payload.get(claims.SESSION_ID) == str(session_token.pk)
