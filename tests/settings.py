@@ -17,4 +17,5 @@ REST_FRAMEWORK_SSO = {
     "PUBLIC_KEYS": {"test-issuer": ["test-2048.pem", "test-1024.pem"]},
     "IDENTITY": "test-issuer",
     "SESSION_EXPIRATION": datetime.timedelta(seconds=3600),
+    "SESSION_TOKEN_QUERYSET": "tests.querysets.SessionTokenQuerySet",
 }

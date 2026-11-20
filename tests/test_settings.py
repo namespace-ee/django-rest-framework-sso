@@ -36,3 +36,11 @@ def test_overridden_hook_is_called_by_jwt_authentication(settings, user, api_fac
     }
     with pytest.raises(AuthenticationFailed, match="Rejected by the overridden hook."):
         JWTAuthentication().authenticate(request)
+
+
+@pytest.mark.django_db
+def test_session_token_manager_uses_the_configured_queryset(user, django_user_model):
+    other_user = django_user_model.objects.create_user(username="other")
+    session_token = SessionToken.objects.create(user=user, created_by=user)
+    SessionToken.objects.create(user=other_user, created_by=other_user)
+    assert list(SessionToken.objects.active().for_user(user)) == [session_token]
