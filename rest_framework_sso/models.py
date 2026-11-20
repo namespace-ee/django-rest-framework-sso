@@ -5,7 +5,7 @@ from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from rest_framework_sso.querysets import SessionTokenQuerySet
+from rest_framework_sso.settings import api_settings
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class SessionToken(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     revoked_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
-    objects = SessionTokenQuerySet.as_manager()  # ty: ignore[missing-argument]
+    objects = api_settings.SESSION_TOKEN_QUERYSET.as_manager()
 
     class Meta:
         abstract = "rest_framework_sso" not in settings.INSTALLED_APPS

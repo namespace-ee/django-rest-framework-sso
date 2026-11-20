@@ -260,6 +260,7 @@ REST_FRAMEWORK_SSO = {
     'DECODE_JWT_TOKEN': 'rest_framework_sso.utils.decode_jwt_token',
     'VALIDATE_PAYLOAD': 'rest_framework_sso.utils.validate_payload',
     'AUTHENTICATE_PAYLOAD': 'rest_framework_sso.utils.authenticate_payload',
+    'SESSION_TOKEN_QUERYSET': 'rest_framework_sso.querysets.SessionTokenQuerySet',
 
     'ENCODE_ALGORITHM': 'RS256',
     'DECODE_ALGORITHMS': None,
@@ -282,6 +283,20 @@ REST_FRAMEWORK_SSO = {
 
     'AUTHENTICATE_HEADER': 'JWT',
 }
+```
+
+`SESSION_TOKEN_QUERYSET` sets the queryset class behind `SessionToken.objects`. Subclass
+`rest_framework_sso.querysets.SessionTokenQuerySet`, which the package relies on, and keep the module free of model
+imports at module level, since it is imported while the models load. The class is read once at startup, so
+`override_settings` does not change it.
+
+```python
+from rest_framework_sso.querysets import SessionTokenQuerySet
+
+
+class MySessionTokenQuerySet(SessionTokenQuerySet):
+    def for_user(self, user):
+        return self.filter(user=user)
 ```
 
 ## Generating RSA keys

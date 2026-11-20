@@ -11,6 +11,7 @@ DEFAULTS = {
     "DECODE_JWT_TOKEN": "rest_framework_sso.utils.decode_jwt_token",
     "VALIDATE_PAYLOAD": "rest_framework_sso.utils.validate_payload",
     "AUTHENTICATE_PAYLOAD": "rest_framework_sso.utils.authenticate_payload",
+    "SESSION_TOKEN_QUERYSET": "rest_framework_sso.querysets.SessionTokenQuerySet",
     "ENCODE_ALGORITHM": "RS256",
     "DECODE_ALGORITHMS": None,
     "VERIFY_SIGNATURE": True,
@@ -40,6 +41,7 @@ IMPORT_STRINGS = (
     "DECODE_JWT_TOKEN",
     "VALIDATE_PAYLOAD",
     "AUTHENTICATE_PAYLOAD",
+    "SESSION_TOKEN_QUERYSET",
 )
 
 
